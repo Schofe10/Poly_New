@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Polymarket 3-Formula Scanner</title>
+<title>Polymarket 3-Formula + Near-Arb Scanner</title>
 
 <style>
 body{
@@ -77,6 +77,10 @@ pre{
   color:#15f47a;
   font-weight:700;
 }
+.warn{
+  color:#ffd34d;
+  font-weight:700;
+}
 .pill{
   display:inline-block;
   padding:8px 12px;
@@ -88,6 +92,10 @@ pre{
 .pill-arb{
   background:rgba(255,80,120,.18);
   color:#ff7a9b;
+}
+.pill-near{
+  background:rgba(255,211,77,.18);
+  color:#ffd34d;
 }
 .pill-bucket{
   background:rgba(255,180,80,.18);
@@ -119,14 +127,6 @@ pre{
   font-weight:800;
   margin:28px 0 14px;
 }
-.small-btn{
-  background:#1e88e5;
-  padding:10px 14px;
-  font-size:14px;
-  border-radius:12px;
-  width:auto;
-  margin-top:10px;
-}
 @media (max-width:700px){
   .grid{grid-template-columns:1fr;}
 }
@@ -135,7 +135,7 @@ pre{
 
 <body>
 
-<h1>Polymarket 3-Formula Scanner</h1>
+<h1>Polymarket 3-Formula + Near-Arb Scanner</h1>
 
 <div class="card">
   <div class="label">Worker Proxy URL</div>
@@ -153,6 +153,8 @@ pre{
   <div class="card">
     <div class="label">Binary Arb Threshold (%)</div>
     <input id="arbThreshold" type="number" step="0.1" value="0.1">
+    <div class="label">Near-Arb Max Total</div>
+    <input id="nearArbMax" type="number" step="0.01" value="1.03">
     <div class="label">Bucket Threshold (%)</div>
     <input id="bucketThreshold" type="number" step="0.1" value="1.5">
     <div class="label">Model Edge Threshold (%)</div>
@@ -180,6 +182,11 @@ pre{
   </div>
 
   <div class="card">
+    <div class="label">Near-Arb Hits</div>
+    <div id="nearArbHits" class="stat">0</div>
+  </div>
+
+  <div class="card">
     <div class="label">Bucket Hits</div>
     <div id="bucketHits" class="stat">0</div>
   </div>
@@ -203,10 +210,13 @@ pre{
 <div class="section-title">1) Binary Arbitrage</div>
 <div id="arbResults"></div>
 
-<div class="section-title">2) Bucket Opportunities</div>
+<div class="section-title">2) Near-Arb Markets</div>
+<div id="nearArbResults"></div>
+
+<div class="section-title">3) Bucket Opportunities</div>
 <div id="bucketResults"></div>
 
-<div class="section-title">3) Model Edge Opportunities</div>
+<div class="section-title">4) Model Edge Opportunities</div>
 <div id="modelResults"></div>
 
 <script>
@@ -223,6 +233,7 @@ function getProxy(){
 function saveSettings(){
   localStorage.setItem("scanLimit", document.getElementById("scanLimit").value || "120");
   localStorage.setItem("arbThreshold", document.getElementById("arbThreshold").value || "0.1");
+  localStorage.setItem("nearArbMax", document.getElementById("nearArbMax").value || "1.03");
   localStorage.setItem("bucketThreshold", document.getElementById("bucketThreshold").value || "1.5");
   localStorage.setItem("modelThreshold", document.getElementById("modelThreshold").value || "2");
   document.getElementById("status").innerText = "Settings saved";
@@ -332,6 +343,19 @@ function createArbCard(row){
   return div;
 }
 
+function createNearArbCard(row){
+  const div = document.createElement("div");
+  div.className = "card";
+  const gapPct = (row.total - 1) * 100;
+  div.innerHTML = `
+    <div class="result-title">${row.question}</div>
+    <div class="muted">YES ask ${row.yesAsk.toFixed(4)} · NO ask ${row.noAsk.toFixed(4)}</div>
+    <div class="muted">Total <span class="warn">${row.total.toFixed(4)}</span> · Distance from arb <span class="warn">${gapPct.toFixed(2)}%</span></div>
+    <div class="pill pill-near">Near-Arb</div>
+  `;
+  return div;
+}
+
 function createBucketCard(group){
   const div = document.createElement("div");
   div.className = "card";
@@ -375,18 +399,24 @@ async function runScan(){
   const debug = document.getElementById("debug");
   const marketsEl = document.getElementById("markets");
   const arbHitsEl = document.getElementById("arbHits");
+  const nearArbHitsEl = document.getElementById("nearArbHits");
   const bucketHitsEl = document.getElementById("bucketHits");
   const modelHitsEl = document.getElementById("modelHits");
   const booksReadEl = document.getElementById("booksRead");
+
   const arbResults = document.getElementById("arbResults");
+  const nearArbResults = document.getElementById("nearArbResults");
   const bucketResults = document.getElementById("bucketResults");
   const modelResults = document.getElementById("modelResults");
 
   arbResults.innerHTML = "";
+  nearArbResults.innerHTML = "";
   bucketResults.innerHTML = "";
   modelResults.innerHTML = "";
+
   marketsEl.innerText = "0";
   arbHitsEl.innerText = "0";
+  nearArbHitsEl.innerText = "0";
   bucketHitsEl.innerText = "0";
   modelHitsEl.innerText = "0";
   booksReadEl.innerText = "0";
@@ -407,18 +437,18 @@ async function runScan(){
 
     const limit = parseInt(localStorage.getItem("scanLimit") || "120", 10) || 120;
     const arbThreshold = (parseFloat(localStorage.getItem("arbThreshold") || "0.1") || 0.1) / 100;
+    const nearArbMax = parseFloat(localStorage.getItem("nearArbMax") || "1.03") || 1.03;
     const bucketThreshold = (parseFloat(localStorage.getItem("bucketThreshold") || "1.5") || 1.5) / 100;
     const modelThreshold = (parseFloat(localStorage.getItem("modelThreshold") || "2") || 2) / 100;
 
     let scanned = 0;
-    let arbHits = 0;
-    let modelHits = 0;
     let booksRead = 0;
     let skippedNoTokens = 0;
     let skippedNoBooks = 0;
     let skippedNoPrices = 0;
 
     const arbRows = [];
+    const nearArbRows = [];
     const modelRows = [];
     const bucketSeedRows = [];
 
@@ -436,7 +466,6 @@ async function runScan(){
           const edge = fairYes - yesPrice;
 
           if(edge >= modelThreshold){
-            modelHits++;
             modelRows.push({
               question: m.question || "Untitled market",
               yesPrice,
@@ -494,13 +523,19 @@ async function runScan(){
         const edgePct = (1 - total) * 100;
 
         if((1 - total) > arbThreshold){
-          arbHits++;
           arbRows.push({
             question: m.question || "Untitled market",
             yesAsk,
             noAsk,
             total,
             edgePct
+          });
+        } else if(total > 1 && total <= nearArbMax) {
+          nearArbRows.push({
+            question: m.question || "Untitled market",
+            yesAsk,
+            noAsk,
+            total
           });
         }
 
@@ -538,10 +573,12 @@ async function runScan(){
     }
 
     arbRows.sort((a,b) => b.edgePct - a.edgePct);
+    nearArbRows.sort((a,b) => a.total - b.total);
     modelRows.sort((a,b) => b.edge - a.edge);
     bucketGroups.sort((a,b) => b.edgePct - a.edgePct);
 
     arbRows.slice(0, 50).forEach(r => arbResults.appendChild(createArbCard(r)));
+    nearArbRows.slice(0, 50).forEach(r => nearArbResults.appendChild(createNearArbCard(r)));
     modelRows.slice(0, 100).forEach(r => modelResults.appendChild(createModelCard(r)));
     bucketGroups.slice(0, 25).forEach(g => bucketResults.appendChild(createBucketCard(g)));
 
@@ -550,6 +587,13 @@ async function runScan(){
       d.className = "card";
       d.innerHTML = '<div class="muted">No binary arbitrage opportunities found at the current threshold.</div>';
       arbResults.appendChild(d);
+    }
+
+    if(!nearArbRows.length){
+      const d = document.createElement("div");
+      d.className = "card";
+      d.innerHTML = '<div class="muted">No near-arb markets found within the current max total.</div>';
+      nearArbResults.appendChild(d);
     }
 
     if(!bucketGroups.length){
@@ -567,8 +611,9 @@ async function runScan(){
     }
 
     arbHitsEl.innerText = String(arbRows.length);
+    nearArbHitsEl.innerText = String(nearArbRows.length);
     bucketHitsEl.innerText = String(bucketGroups.length);
-    modelHitsEl.innerText = String(modelHits);
+    modelHitsEl.innerText = String(modelRows.length);
     status.innerText = "Done";
 
     debug.innerText =
@@ -580,9 +625,11 @@ async function runScan(){
       "\nSkipped (no books/asks): " + skippedNoBooks +
       "\nSkipped (no prices): " + skippedNoPrices +
       "\nBinary arb hits: " + arbRows.length +
+      "\nNear-arb hits: " + nearArbRows.length +
       "\nBucket hits: " + bucketGroups.length +
-      "\nModel edge hits: " + modelHits +
+      "\nModel edge hits: " + modelRows.length +
       "\nBinary arb threshold: " + (arbThreshold * 100).toFixed(2) + "%" +
+      "\nNear-arb max total: " + nearArbMax.toFixed(2) +
       "\nBucket threshold: " + (bucketThreshold * 100).toFixed(2) + "%" +
       "\nModel threshold: " + (modelThreshold * 100).toFixed(2) + "%";
   } catch (err) {
@@ -597,6 +644,7 @@ window.addEventListener("load", () => {
 
   document.getElementById("scanLimit").value = localStorage.getItem("scanLimit") || "120";
   document.getElementById("arbThreshold").value = localStorage.getItem("arbThreshold") || "0.1";
+  document.getElementById("nearArbMax").value = localStorage.getItem("nearArbMax") || "1.03";
   document.getElementById("bucketThreshold").value = localStorage.getItem("bucketThreshold") || "1.5";
   document.getElementById("modelThreshold").value = localStorage.getItem("modelThreshold") || "2";
 });
