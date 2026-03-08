@@ -3,104 +3,139 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Polymarket Orderbook Scanner</title>
+<title>Polymarket 3-Formula Scanner</title>
+
 <style>
 body{
-font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-background:#07111f;
-color:#fff;
-margin:0;
-padding:22px;
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  background:#07111f;
+  color:#fff;
+  margin:0;
+  padding:22px;
 }
 h1{
-margin:0 0 24px;
-font-size:32px;
-font-weight:800;
+  margin:0 0 24px;
+  font-size:32px;
+  font-weight:800;
 }
 .card{
-background:#0d1b38;
-border-radius:18px;
-padding:18px;
-margin-bottom:18px;
+  background:#0d1b38;
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:18px;
 }
 .label{
-color:rgba(255,255,255,.75);
-font-size:13px;
-margin-bottom:10px;
+  color:rgba(255,255,255,.75);
+  font-size:13px;
+  margin-bottom:10px;
 }
 .stat{
-font-size:30px;
-font-weight:800;
-color:#15f47a;
+  font-size:30px;
+  font-weight:800;
+  color:#15f47a;
 }
 input{
-width:100%;
-box-sizing:border-box;
-padding:14px;
-border-radius:14px;
-border:none;
-font-size:16px;
-margin-bottom:14px;
+  width:100%;
+  box-sizing:border-box;
+  padding:14px;
+  border-radius:14px;
+  border:none;
+  font-size:16px;
+  margin-bottom:14px;
 }
 button{
-background:#15d95e;
-color:#fff;
-border:none;
-border-radius:16px;
-padding:16px 24px;
-font-size:17px;
-font-weight:700;
-cursor:pointer;
+  background:#15d95e;
+  color:#fff;
+  border:none;
+  border-radius:16px;
+  padding:16px 24px;
+  font-size:17px;
+  font-weight:700;
+  cursor:pointer;
 }
 .full{width:100%;}
 pre{
-white-space:pre-wrap;
-word-break:break-word;
-font-size:13px;
-line-height:1.45;
-margin:0;
-font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  white-space:pre-wrap;
+  word-break:break-word;
+  font-size:13px;
+  line-height:1.45;
+  margin:0;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 .result-title{
-font-weight:800;
-font-size:17px;
-margin-bottom:8px;
-line-height:1.35;
+  font-weight:800;
+  font-size:17px;
+  margin-bottom:8px;
+  line-height:1.35;
 }
 .muted{
-color:rgba(255,255,255,.75);
-font-size:14px;
-line-height:1.5;
+  color:rgba(255,255,255,.75);
+  font-size:14px;
+  line-height:1.5;
 }
 .edge{
-color:#15f47a;
-font-weight:700;
+  color:#15f47a;
+  font-weight:700;
 }
 .pill{
-display:inline-block;
-padding:8px 12px;
-border-radius:999px;
-font-size:12px;
-font-weight:700;
-margin-top:10px;
+  display:inline-block;
+  padding:8px 12px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  margin-top:10px;
 }
 .pill-arb{
-background:rgba(255,80,120,.18);
-color:#ff7a9b;
+  background:rgba(255,80,120,.18);
+  color:#ff7a9b;
+}
+.pill-bucket{
+  background:rgba(255,180,80,.18);
+  color:#ffb866;
+}
+.pill-strong{
+  background:rgba(21,244,122,.18);
+  color:#15f47a;
+}
+.pill-buy{
+  background:rgba(100,200,255,.18);
+  color:#78c9ff;
+}
+.pill-watch{
+  background:rgba(255,211,77,.18);
+  color:#ffd34d;
+}
+.pill-none{
+  background:rgba(255,255,255,.12);
+  color:rgba(255,255,255,.75);
 }
 .grid{
-display:grid;
-grid-template-columns:repeat(2,minmax(0,1fr));
-gap:14px;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+.section-title{
+  font-size:20px;
+  font-weight:800;
+  margin:28px 0 14px;
+}
+.small-btn{
+  background:#1e88e5;
+  padding:10px 14px;
+  font-size:14px;
+  border-radius:12px;
+  width:auto;
+  margin-top:10px;
 }
 @media (max-width:700px){
-.grid{grid-template-columns:1fr;}
+  .grid{grid-template-columns:1fr;}
 }
 </style>
 </head>
+
 <body>
 
-<h1>Polymarket Orderbook Scanner</h1>
+<h1>Polymarket 3-Formula Scanner</h1>
 
 <div class="card">
   <div class="label">Worker Proxy URL</div>
@@ -114,9 +149,14 @@ gap:14px;
     <input id="scanLimit" type="number" value="120">
     <button onclick="saveSettings()">Save Settings</button>
   </div>
+
   <div class="card">
-    <div class="label">Arbitrage Threshold (%)</div>
-    <input id="arbThreshold" type="number" step="0.1" value="0.5">
+    <div class="label">Binary Arb Threshold (%)</div>
+    <input id="arbThreshold" type="number" step="0.1" value="0.1">
+    <div class="label">Bucket Threshold (%)</div>
+    <input id="bucketThreshold" type="number" step="0.1" value="1.5">
+    <div class="label">Model Edge Threshold (%)</div>
+    <input id="modelThreshold" type="number" step="0.1" value="2">
     <button onclick="saveSettings()">Save Settings</button>
   </div>
 </div>
@@ -128,14 +168,27 @@ gap:14px;
     <div class="label">Status</div>
     <div id="status">Idle</div>
   </div>
+
   <div class="card">
     <div class="label">Markets Scanned</div>
     <div id="markets" class="stat">0</div>
   </div>
+
   <div class="card">
-    <div class="label">Arbitrage Hits</div>
+    <div class="label">Binary Arb Hits</div>
     <div id="arbHits" class="stat">0</div>
   </div>
+
+  <div class="card">
+    <div class="label">Bucket Hits</div>
+    <div id="bucketHits" class="stat">0</div>
+  </div>
+
+  <div class="card">
+    <div class="label">Model Edge Hits</div>
+    <div id="modelHits" class="stat">0</div>
+  </div>
+
   <div class="card">
     <div class="label">Books Read</div>
     <div id="booksRead" class="stat">0</div>
@@ -147,17 +200,20 @@ gap:14px;
   <pre id="debug">No messages yet.</pre>
 </div>
 
-<div class="card">
-  <div class="label">Arbitrage Opportunities</div>
-  <div id="arbResults"></div>
-</div>
+<div class="section-title">1) Binary Arbitrage</div>
+<div id="arbResults"></div>
+
+<div class="section-title">2) Bucket Opportunities</div>
+<div id="bucketResults"></div>
+
+<div class="section-title">3) Model Edge Opportunities</div>
+<div id="modelResults"></div>
 
 <script>
 function saveProxy(){
   const url = document.getElementById("proxy").value.trim().replace(/\/+$/,"");
   localStorage.setItem("proxy", url);
   document.getElementById("status").innerText = "Proxy saved";
-  document.getElementById("debug").innerText = "Saved proxy: " + url;
 }
 
 function getProxy(){
@@ -166,21 +222,45 @@ function getProxy(){
 
 function saveSettings(){
   localStorage.setItem("scanLimit", document.getElementById("scanLimit").value || "120");
-  localStorage.setItem("arbThreshold", document.getElementById("arbThreshold").value || "0.5");
+  localStorage.setItem("arbThreshold", document.getElementById("arbThreshold").value || "0.1");
+  localStorage.setItem("bucketThreshold", document.getElementById("bucketThreshold").value || "1.5");
+  localStorage.setItem("modelThreshold", document.getElementById("modelThreshold").value || "2");
   document.getElementById("status").innerText = "Settings saved";
 }
 
 function tryParseJSON(value){
-  if (typeof value !== "string") return value;
+  if(typeof value !== "string") return value;
   try { return JSON.parse(value); } catch { return value; }
 }
 
 function parseTokenIds(value){
   const raw = tryParseJSON(value);
-  if (Array.isArray(raw)) return raw.map(x => String(x));
-  if (typeof raw === "string" && raw.includes(",")) {
+  if(Array.isArray(raw)) return raw.map(x => String(x));
+  if(typeof raw === "string" && raw.includes(",")){
     return raw.split(",").map(x => x.trim().replace(/^"+|"+$/g,"")).filter(Boolean);
   }
+  return [];
+}
+
+function parseOutcomePrices(value){
+  const raw = tryParseJSON(value);
+
+  if(Array.isArray(raw)){
+    return raw.map(v => parseFloat(v)).filter(v => Number.isFinite(v));
+  }
+
+  if(typeof raw === "string"){
+    if(raw.includes(",")){
+      return raw
+        .split(",")
+        .map(v => parseFloat(v.trim().replace(/^"+|"+$/g,"")))
+        .filter(v => Number.isFinite(v));
+    }
+
+    const single = parseFloat(raw);
+    return Number.isFinite(single) ? [single] : [];
+  }
+
   return [];
 }
 
@@ -190,15 +270,54 @@ async function fetchJSON(url){
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error("Non-JSON response from " + url + "\\n\\n" + text.slice(0,300));
+    throw new Error("Non-JSON response from " + url + "\n\n" + text.slice(0,300));
   }
 }
 
 function bestAskFromBook(book){
   const asks = book && Array.isArray(book.asks) ? book.asks : [];
-  if (!asks.length) return null;
+  if(!asks.length) return null;
   const px = parseFloat(asks[0].price);
   return Number.isFinite(px) ? px : null;
+}
+
+function heuristicFairYes(yesPrice, market){
+  let fair = yesPrice;
+  const q = (market.question || "").toLowerCase();
+  const category = (market.category || "").toLowerCase();
+
+  if(yesPrice < 0.15) fair += 0.02;
+  if(yesPrice > 0.85) fair -= 0.02;
+
+  if(q.includes("bitcoin") || q.includes("btc")) fair += 0.01;
+  if(q.includes("ethereum") || q.includes("eth")) fair += 0.01;
+  if(q.includes("election") || q.includes("president")) fair -= 0.005;
+  if(q.includes("fed") || q.includes("rate")) fair -= 0.005;
+
+  if(category.includes("crypto")) fair += 0.005;
+  if(category.includes("politics")) fair -= 0.003;
+
+  return Math.max(0.01, Math.min(0.99, fair));
+}
+
+function signalFromEdge(edge){
+  if(edge >= 0.10) return ["Strong Buy", "pill-strong"];
+  if(edge >= 0.05) return ["Buy", "pill-buy"];
+  if(edge >= 0.02) return ["Watch", "pill-watch"];
+  return ["No Edge", "pill-none"];
+}
+
+function normalizeBucketKey(question){
+  if(!question) return null;
+
+  let key = question.toLowerCase()
+    .replace(/\$?\d+(\.\d+)?k?\+?/gi, "{num}")
+    .replace(/\b(over|under|between|above|below|at least|at most)\b/gi, "{range}")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if(!key.includes("{num}") && !key.includes("{range}")) return null;
+  return key;
 }
 
 function createArbCard(row){
@@ -208,7 +327,44 @@ function createArbCard(row){
     <div class="result-title">${row.question}</div>
     <div class="muted">YES ask ${row.yesAsk.toFixed(4)} · NO ask ${row.noAsk.toFixed(4)}</div>
     <div class="muted">Total ${row.total.toFixed(4)} · Arb Edge <span class="edge">${row.edgePct.toFixed(2)}%</span></div>
-    <div class="pill pill-arb">Arbitrage</div>
+    <div class="pill pill-arb">Binary Arbitrage</div>
+  `;
+  return div;
+}
+
+function createBucketCard(group){
+  const div = document.createElement("div");
+  div.className = "card";
+
+  let html = `
+    <div class="result-title">${group.title}</div>
+    <div class="muted">Bucket count: ${group.items.length}</div>
+    <div class="muted">Sum of YES prices: ${group.sumYes.toFixed(4)} · Bucket Edge <span class="edge">${group.edgePct.toFixed(2)}%</span></div>
+    <div class="pill pill-bucket">Bucket Opportunity</div>
+  `;
+
+  for(const item of group.items.slice(0, 6)){
+    html += `<div class="muted">• ${item.question} — YES ${item.yesPrice.toFixed(4)}</div>`;
+  }
+
+  if(group.items.length > 6){
+    html += `<div class="muted">+${group.items.length - 6} more</div>`;
+  }
+
+  div.innerHTML = html;
+  return div;
+}
+
+function createModelCard(row){
+  const div = document.createElement("div");
+  div.className = "card";
+  const [label, pill] = signalFromEdge(row.edge);
+
+  div.innerHTML = `
+    <div class="result-title">${row.question}</div>
+    <div class="muted">Market YES ${(row.yesPrice * 100).toFixed(2)}% · Fair YES ${(row.fairYes * 100).toFixed(2)}%</div>
+    <div class="muted">Model Edge <span class="edge">${(row.edge * 100).toFixed(2)}%</span></div>
+    <div class="pill ${pill}">${label}</div>
   `;
   return div;
 }
@@ -219,15 +375,23 @@ async function runScan(){
   const debug = document.getElementById("debug");
   const marketsEl = document.getElementById("markets");
   const arbHitsEl = document.getElementById("arbHits");
+  const bucketHitsEl = document.getElementById("bucketHits");
+  const modelHitsEl = document.getElementById("modelHits");
   const booksReadEl = document.getElementById("booksRead");
   const arbResults = document.getElementById("arbResults");
+  const bucketResults = document.getElementById("bucketResults");
+  const modelResults = document.getElementById("modelResults");
 
   arbResults.innerHTML = "";
+  bucketResults.innerHTML = "";
+  modelResults.innerHTML = "";
   marketsEl.innerText = "0";
   arbHitsEl.innerText = "0";
+  bucketHitsEl.innerText = "0";
+  modelHitsEl.innerText = "0";
   booksReadEl.innerText = "0";
 
-  if (!proxy) {
+  if(!proxy){
     status.innerText = "Missing proxy";
     debug.innerText = "Paste your Worker URL first and tap Save Proxy.";
     return;
@@ -237,25 +401,68 @@ async function runScan(){
     status.innerText = "Loading markets...";
     const markets = await fetchJSON(proxy + "/api/markets");
 
-    if (!Array.isArray(markets)) {
+    if(!Array.isArray(markets)){
       throw new Error("Markets response was not an array.");
     }
 
     const limit = parseInt(localStorage.getItem("scanLimit") || "120", 10) || 120;
-    const arbThreshold = (parseFloat(localStorage.getItem("arbThreshold") || "0.5") || 0.5) / 100;
+    const arbThreshold = (parseFloat(localStorage.getItem("arbThreshold") || "0.1") || 0.1) / 100;
+    const bucketThreshold = (parseFloat(localStorage.getItem("bucketThreshold") || "1.5") || 1.5) / 100;
+    const modelThreshold = (parseFloat(localStorage.getItem("modelThreshold") || "2") || 2) / 100;
 
     let scanned = 0;
     let arbHits = 0;
+    let modelHits = 0;
     let booksRead = 0;
     let skippedNoTokens = 0;
     let skippedNoBooks = 0;
+    let skippedNoPrices = 0;
+
+    const arbRows = [];
+    const modelRows = [];
+    const bucketSeedRows = [];
 
     const selected = markets.slice(0, limit);
 
-    for (const m of selected) {
-      const tokenIds = parseTokenIds(m.clobTokenIds);
+    for(const m of selected){
+      const prices = parseOutcomePrices(m.outcomePrices);
 
-      if (tokenIds.length < 2) {
+      if(prices.length >= 2){
+        const yesPrice = prices[0];
+        const noPrice = prices[1];
+
+        if(Number.isFinite(yesPrice) && Number.isFinite(noPrice)){
+          const fairYes = heuristicFairYes(yesPrice, m);
+          const edge = fairYes - yesPrice;
+
+          if(edge >= modelThreshold){
+            modelHits++;
+            modelRows.push({
+              question: m.question || "Untitled market",
+              yesPrice,
+              noPrice,
+              fairYes,
+              edge
+            });
+          }
+
+          const bucketKey = normalizeBucketKey(m.question || "");
+          if(bucketKey){
+            bucketSeedRows.push({
+              bucketKey,
+              question: m.question || "Untitled market",
+              yesPrice
+            });
+          }
+        } else {
+          skippedNoPrices++;
+        }
+      } else {
+        skippedNoPrices++;
+      }
+
+      const tokenIds = parseTokenIds(m.clobTokenIds);
+      if(tokenIds.length < 2){
         skippedNoTokens++;
         continue;
       }
@@ -275,7 +482,7 @@ async function runScan(){
         const yesAsk = bestAskFromBook(yesBook);
         const noAsk = bestAskFromBook(noBook);
 
-        if (!Number.isFinite(yesAsk) || !Number.isFinite(noAsk)) {
+        if(!Number.isFinite(yesAsk) || !Number.isFinite(noAsk)){
           skippedNoBooks++;
           continue;
         }
@@ -286,17 +493,15 @@ async function runScan(){
         const total = yesAsk + noAsk;
         const edgePct = (1 - total) * 100;
 
-        if ((1 - total) > arbThreshold) {
+        if((1 - total) > arbThreshold){
           arbHits++;
-          arbHitsEl.innerText = String(arbHits);
-
-          arbResults.appendChild(createArbCard({
+          arbRows.push({
             question: m.question || "Untitled market",
             yesAsk,
             noAsk,
             total,
             edgePct
-          }));
+          });
         }
 
         status.innerText = "Scanning... " + scanned + " valid markets";
@@ -305,35 +510,95 @@ async function runScan(){
       }
     }
 
-    if (!arbHits) {
-      const empty = document.createElement("div");
-      empty.className = "muted";
-      empty.innerText = "No arbitrage opportunities found at the current threshold.";
-      arbResults.appendChild(empty);
+    const bucketMap = new Map();
+
+    for(const row of bucketSeedRows){
+      if(!bucketMap.has(row.bucketKey)){
+        bucketMap.set(row.bucketKey, []);
+      }
+      bucketMap.get(row.bucketKey).push(row);
     }
 
+    const bucketGroups = [];
+    for(const [key, items] of bucketMap.entries()){
+      if(items.length < 3) continue;
+
+      const sumYes = items.reduce((acc, item) => acc + item.yesPrice, 0);
+      const edge = 1 - sumYes;
+
+      if(edge > bucketThreshold){
+        bucketGroups.push({
+          key,
+          title: items[0].question,
+          items,
+          sumYes,
+          edgePct: edge * 100
+        });
+      }
+    }
+
+    arbRows.sort((a,b) => b.edgePct - a.edgePct);
+    modelRows.sort((a,b) => b.edge - a.edge);
+    bucketGroups.sort((a,b) => b.edgePct - a.edgePct);
+
+    arbRows.slice(0, 50).forEach(r => arbResults.appendChild(createArbCard(r)));
+    modelRows.slice(0, 100).forEach(r => modelResults.appendChild(createModelCard(r)));
+    bucketGroups.slice(0, 25).forEach(g => bucketResults.appendChild(createBucketCard(g)));
+
+    if(!arbRows.length){
+      const d = document.createElement("div");
+      d.className = "card";
+      d.innerHTML = '<div class="muted">No binary arbitrage opportunities found at the current threshold.</div>';
+      arbResults.appendChild(d);
+    }
+
+    if(!bucketGroups.length){
+      const d = document.createElement("div");
+      d.className = "card";
+      d.innerHTML = '<div class="muted">No bucket opportunities found at the current threshold.</div>';
+      bucketResults.appendChild(d);
+    }
+
+    if(!modelRows.length){
+      const d = document.createElement("div");
+      d.className = "card";
+      d.innerHTML = '<div class="muted">No model edge opportunities found at the current threshold.</div>';
+      modelResults.appendChild(d);
+    }
+
+    arbHitsEl.innerText = String(arbRows.length);
+    bucketHitsEl.innerText = String(bucketGroups.length);
+    modelHitsEl.innerText = String(modelHits);
     status.innerText = "Done";
+
     debug.innerText =
       "Markets returned: " + markets.length +
-      "\\nMarkets checked: " + selected.length +
-      "\\nValid markets scanned: " + scanned +
-      "\\nBooks read: " + booksRead +
-      "\\nSkipped (no tokens): " + skippedNoTokens +
-      "\\nSkipped (no books/asks): " + skippedNoBooks +
-      "\\nArbitrage hits: " + arbHits +
-      "\\nThreshold: " + (arbThreshold * 100).toFixed(2) + "%";
+      "\nMarkets checked: " + selected.length +
+      "\nValid orderbook markets scanned: " + scanned +
+      "\nBooks read: " + booksRead +
+      "\nSkipped (no tokens): " + skippedNoTokens +
+      "\nSkipped (no books/asks): " + skippedNoBooks +
+      "\nSkipped (no prices): " + skippedNoPrices +
+      "\nBinary arb hits: " + arbRows.length +
+      "\nBucket hits: " + bucketGroups.length +
+      "\nModel edge hits: " + modelHits +
+      "\nBinary arb threshold: " + (arbThreshold * 100).toFixed(2) + "%" +
+      "\nBucket threshold: " + (bucketThreshold * 100).toFixed(2) + "%" +
+      "\nModel threshold: " + (modelThreshold * 100).toFixed(2) + "%";
   } catch (err) {
     status.innerText = "Failed";
     debug.innerText = err && err.message ? err.message : String(err);
   }
 }
 
-window.addEventListener("load", async () => {
+window.addEventListener("load", () => {
   const savedProxy = getProxy();
-  if (savedProxy) document.getElementById("proxy").value = savedProxy;
+  if(savedProxy) document.getElementById("proxy").value = savedProxy;
 
   document.getElementById("scanLimit").value = localStorage.getItem("scanLimit") || "120";
-  document.getElementById("arbThreshold").value = localStorage.getItem("arbThreshold") || "0.5";
+  document.getElementById("arbThreshold").value = localStorage.getItem("arbThreshold") || "0.1";
+  document.getElementById("bucketThreshold").value = localStorage.getItem("bucketThreshold") || "1.5";
+  document.getElementById("modelThreshold").value = localStorage.getItem("modelThreshold") || "2";
 });
 </script>
 
