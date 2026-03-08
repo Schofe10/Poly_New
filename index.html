@@ -130,6 +130,11 @@
       color: rgba(255,255,255,0.75);
     }
 
+    .pill-bucket {
+      background: rgba(255, 100, 180, 0.18);
+      color: #ff84c1;
+    }
+
     .small-btn {
       padding: 10px 14px;
       font-size: 14px;
@@ -155,6 +160,12 @@
       font-size: 12px;
       color: rgba(255,255,255,0.6);
     }
+
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: 14px 0;
+    }
   </style>
 </head>
 <body>
@@ -168,7 +179,7 @@
 
   <div class="card">
     <div class="label">Scanner Settings</div>
-    <input id="scanLimit" type="number" min="10" max="1000" value="150" placeholder="How many markets to show" />
+    <input id="scanLimit" type="number" min="10" max="1000" value="150" placeholder="How many opportunities to show" />
     <button onclick="saveSettings()">Save Settings</button>
   </div>
 
@@ -190,6 +201,10 @@
         <div id="hits" class="stat">0</div>
       </div>
       <div>
+        <div class="label">Bucket hits</div>
+        <div id="bucketHits" class="stat">0</div>
+      </div>
+      <div>
         <div class="label">Watchlist count</div>
         <div id="watchCount" class="stat">0</div>
       </div>
@@ -204,6 +219,9 @@
   <div class="section-title">Top Opportunities</div>
   <div id="results"></div>
 
+  <div class="section-title">Bucket Opportunities</div>
+  <div id="bucketResults"></div>
+
   <div class="section-title">Watchlist</div>
   <div id="watchlist"></div>
 
@@ -211,9 +229,11 @@
     const statusEl = document.getElementById("status");
     const marketsEl = document.getElementById("markets");
     const hitsEl = document.getElementById("hits");
+    const bucketHitsEl = document.getElementById("bucketHits");
     const watchCountEl = document.getElementById("watchCount");
     const debugEl = document.getElementById("debug");
     const resultsEl = document.getElementById("results");
+    const bucketResultsEl = document.getElementById("bucketResults");
     const watchlistEl = document.getElementById("watchlist");
     const proxyEl = document.getElementById("proxy");
     const scanLimitEl = document.getElementById("scanLimit");
@@ -339,8 +359,8 @@
 
     function heuristicFairYes(market, yesPrice) {
       let fair = yesPrice;
-
       const q = (market.question || "").toLowerCase();
+      const category = (market.category || "").toLowerCase();
 
       if (yesPrice < 0.15) fair += 0.02;
       if (yesPrice > 0.85) fair -= 0.02;
@@ -349,6 +369,8 @@
       if (q.includes("ethereum") || q.includes("eth")) fair += 0.01;
       if (q.includes("election") || q.includes("president")) fair -= 0.005;
       if (q.includes("fed") || q.includes("rate")) fair -= 0.005;
+      if (category.includes("crypto")) fair += 0.005;
+      if (category.includes("politics")) fair -= 0.003;
 
       fair = Math.max(0.01, Math.min(0.99, fair));
       return fair;
@@ -362,7 +384,7 @@
 
       div.innerHTML = `
         <div class="result-title">${row.question}</div>
-        <div class="muted">YES ${row.yesPrice.toFixed(3)} · NO ${row.noPrice.toFixed(3)} · Total ${(row.total).toFixed(3)}</div>
+        <div class="muted">YES ${row.yesPrice.toFixed(3)} · NO ${row.noPrice.toFixed(3)} · Total ${row.total.toFixed(3)}</div>
         <div class="muted">Market YES ${(row.yesPrice * 100).toFixed(1)}% · Fair YES ${(row.fairYes * 100).toFixed(1)}%</div>
         <div class="muted">Edge <span class="edge">${(row.edge * 100).toFixed(2)}%</span></div>
         <div class="pill ${signal.className}">${signal.label}</div>
@@ -405,6 +427,83 @@
       return div;
     }
 
+    function normalizeBucketKey(question) {
+      if (!question) return null;
+
+      let key = question.toLowerCase();
+
+      key = key
+        .replace(/\$?\d+(\.\d+)?k?\+?/gi, "{num}")
+        .replace(/\b(over|under|between|above|below|at least|at most)\b/gi, "{range}")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (!key.includes("{num}") && !key.includes("{range}")) return null;
+      return key;
+    }
+
+    function buildBucketGroups(rows) {
+      const groups = new Map();
+
+      for (const row of rows) {
+        const key = normalizeBucketKey(row.question);
+        if (!key) continue;
+
+        if (!groups.has(key)) {
+          groups.set(key, []);
+        }
+        groups.get(key).push(row);
+      }
+
+      const out = [];
+      for (const [key, items] of groups.entries()) {
+        if (items.length < 3) continue;
+
+        const sumYes = items.reduce((acc, item) => acc + item.yesPrice, 0);
+        const edge = 1 - sumYes;
+
+        out.push({
+          key,
+          items,
+          sumYes,
+          edge
+        });
+      }
+
+      out.sort((a, b) => b.edge - a.edge);
+      return out;
+    }
+
+    function createBucketCard(group) {
+      const div = document.createElement("div");
+      div.className = "card";
+
+      const topTitle = group.items[0]?.question || "Bucket Group";
+      const isInteresting = group.edge > 0.02;
+
+      let html = `
+        <div class="result-title">${topTitle}</div>
+        <div class="muted">Bucket count: ${group.items.length}</div>
+        <div class="muted">Sum of YES prices: ${group.sumYes.toFixed(3)}</div>
+        <div class="muted">Bucket edge: <span class="edge">${(group.edge * 100).toFixed(2)}%</span></div>
+        <div class="pill ${isInteresting ? 'pill-bucket' : 'pill-none'}">${isInteresting ? 'Bucket Opportunity' : 'No Bucket Edge'}</div>
+        <div class="divider"></div>
+      `;
+
+      for (const item of group.items.slice(0, 6)) {
+        html += `
+          <div class="muted">• ${item.question} — YES ${item.yesPrice.toFixed(3)}</div>
+        `;
+      }
+
+      if (group.items.length > 6) {
+        html += `<div class="tiny">+${group.items.length - 6} more buckets</div>`;
+      }
+
+      div.innerHTML = html;
+      return div;
+    }
+
     function renderWatchlist() {
       const items = getWatchlist();
       watchCountEl.textContent = String(items.length);
@@ -441,8 +540,10 @@
 
     async function runScan() {
       resultsEl.innerHTML = "";
+      bucketResultsEl.innerHTML = "";
       marketsEl.textContent = "0";
       hitsEl.textContent = "0";
+      bucketHitsEl.textContent = "0";
 
       const proxy = getProxy();
       if (!proxy) {
@@ -531,6 +632,21 @@
           resultsEl.appendChild(createResultCard(row));
         }
 
+        const bucketGroups = buildBucketGroups(rows);
+        const interestingBuckets = bucketGroups.filter(g => g.edge > 0.02);
+        bucketHitsEl.textContent = String(interestingBuckets.length);
+
+        if (interestingBuckets.length) {
+          for (const group of interestingBuckets.slice(0, 25)) {
+            bucketResultsEl.appendChild(createBucketCard(group));
+          }
+        } else {
+          const emptyBucket = document.createElement("div");
+          emptyBucket.className = "card";
+          emptyBucket.innerHTML = `<div class="muted">No bucket opportunities detected yet.</div>`;
+          bucketResultsEl.appendChild(emptyBucket);
+        }
+
         marketsEl.textContent = String(validScanned);
         hitsEl.textContent = String(hits);
         setStatus("Done");
@@ -540,7 +656,8 @@
           "Markets returned: " + markets.length + "\n" +
           "Valid markets scanned: " + validScanned + "\n" +
           "Skipped (no prices): " + skippedNoPrices + "\n" +
-          "Buy/Watch hits: " + hits + "\n\n" +
+          "Buy/Watch hits: " + hits + "\n" +
+          "Bucket hits: " + interestingBuckets.length + "\n\n" +
           "First market sample:\n" +
           JSON.stringify(firstSample, null, 2)
         );
