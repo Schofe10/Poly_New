@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Polymarket 3-Formula + Near-Arb Scanner</title>
-
+<title>Polymarket Combined Dashboard</title>
 <style>
 body{
   font-family:-apple-system,BlinkMacSystemFont,sans-serif;
@@ -34,7 +33,7 @@ h1{
   font-weight:800;
   color:#15f47a;
 }
-input{
+input, select{
   width:100%;
   box-sizing:border-box;
   padding:14px;
@@ -122,20 +121,48 @@ pre{
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:14px;
 }
+.grid4{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+}
 .section-title{
   font-size:20px;
   font-weight:800;
   margin:28px 0 14px;
 }
+.subtabs{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
+}
+.tabbtn{
+  background:#16305e;
+  color:#fff;
+  border:none;
+  border-radius:999px;
+  padding:10px 14px;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+}
+.tabbtn.active{
+  background:#15d95e;
+  color:#07111f;
+}
+.hidden{display:none;}
+@media (max-width:900px){
+  .grid4{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
 @media (max-width:700px){
-  .grid{grid-template-columns:1fr;}
+  .grid,.grid4{grid-template-columns:1fr;}
 }
 </style>
 </head>
-
 <body>
 
-<h1>Polymarket 3-Formula + Near-Arb Scanner</h1>
+<h1>Polymarket Combined Dashboard</h1>
 
 <div class="card">
   <div class="label">Worker Proxy URL</div>
@@ -147,17 +174,16 @@ pre{
   <div class="card">
     <div class="label">Scan Limit</div>
     <input id="scanLimit" type="number" value="120">
-    <button onclick="saveSettings()">Save Settings</button>
+    <div class="label">Near-Arb Max Total</div>
+    <input id="nearArbMax" type="number" step="0.01" value="1.03">
   </div>
 
   <div class="card">
     <div class="label">Binary Arb Threshold (%)</div>
     <input id="arbThreshold" type="number" step="0.1" value="0.1">
-    <div class="label">Near-Arb Max Total</div>
-    <input id="nearArbMax" type="number" step="0.01" value="1.03">
     <div class="label">Bucket Threshold (%)</div>
     <input id="bucketThreshold" type="number" step="0.1" value="1.5">
-    <div class="label">Model Edge Threshold (%)</div>
+    <div class="label">Model Threshold (%)</div>
     <input id="modelThreshold" type="number" step="0.1" value="2">
     <button onclick="saveSettings()">Save Settings</button>
   </div>
@@ -165,40 +191,48 @@ pre{
 
 <button class="full" onclick="runScan()">Scan Markets</button>
 
-<div class="grid">
+<div class="grid4">
   <div class="card">
     <div class="label">Status</div>
     <div id="status">Idle</div>
   </div>
-
   <div class="card">
     <div class="label">Markets Scanned</div>
     <div id="markets" class="stat">0</div>
   </div>
-
   <div class="card">
-    <div class="label">Binary Arb Hits</div>
-    <div id="arbHits" class="stat">0</div>
+    <div class="label">Books Read</div>
+    <div id="booksRead" class="stat">0</div>
   </div>
-
+  <div class="card">
+    <div class="label">Model Hits</div>
+    <div id="modelHits" class="stat">0</div>
+  </div>
   <div class="card">
     <div class="label">Near-Arb Hits</div>
     <div id="nearArbHits" class="stat">0</div>
   </div>
-
+  <div class="card">
+    <div class="label">Binary Arb Hits</div>
+    <div id="arbHits" class="stat">0</div>
+  </div>
   <div class="card">
     <div class="label">Bucket Hits</div>
     <div id="bucketHits" class="stat">0</div>
   </div>
-
   <div class="card">
-    <div class="label">Model Edge Hits</div>
-    <div id="modelHits" class="stat">0</div>
+    <div class="label">Checked Markets</div>
+    <div id="checkedMarkets" class="stat">0</div>
   </div>
+</div>
 
-  <div class="card">
-    <div class="label">Books Read</div>
-    <div id="booksRead" class="stat">0</div>
+<div class="card">
+  <div class="label">View</div>
+  <div class="subtabs">
+    <button class="tabbtn active" onclick="showTab('nearArbTab', this)">Near-Arb</button>
+    <button class="tabbtn" onclick="showTab('arbTab', this)">Binary Arb</button>
+    <button class="tabbtn" onclick="showTab('bucketTab', this)">Buckets</button>
+    <button class="tabbtn" onclick="showTab('modelTab', this)">Probability Model</button>
   </div>
 </div>
 
@@ -207,17 +241,25 @@ pre{
   <pre id="debug">No messages yet.</pre>
 </div>
 
-<div class="section-title">1) Binary Arbitrage</div>
-<div id="arbResults"></div>
+<div id="nearArbTab">
+  <div class="section-title">Near-Arb Markets</div>
+  <div id="nearArbResults"></div>
+</div>
 
-<div class="section-title">2) Near-Arb Markets</div>
-<div id="nearArbResults"></div>
+<div id="arbTab" class="hidden">
+  <div class="section-title">Binary Arbitrage</div>
+  <div id="arbResults"></div>
+</div>
 
-<div class="section-title">3) Bucket Opportunities</div>
-<div id="bucketResults"></div>
+<div id="bucketTab" class="hidden">
+  <div class="section-title">Bucket Opportunities</div>
+  <div id="bucketResults"></div>
+</div>
 
-<div class="section-title">4) Model Edge Opportunities</div>
-<div id="modelResults"></div>
+<div id="modelTab" class="hidden">
+  <div class="section-title">Probability Model Panel</div>
+  <div id="modelResults"></div>
+</div>
 
 <script>
 function saveProxy(){
@@ -232,11 +274,18 @@ function getProxy(){
 
 function saveSettings(){
   localStorage.setItem("scanLimit", document.getElementById("scanLimit").value || "120");
-  localStorage.setItem("arbThreshold", document.getElementById("arbThreshold").value || "0.1");
   localStorage.setItem("nearArbMax", document.getElementById("nearArbMax").value || "1.03");
+  localStorage.setItem("arbThreshold", document.getElementById("arbThreshold").value || "0.1");
   localStorage.setItem("bucketThreshold", document.getElementById("bucketThreshold").value || "1.5");
   localStorage.setItem("modelThreshold", document.getElementById("modelThreshold").value || "2");
   document.getElementById("status").innerText = "Settings saved";
+}
+
+function showTab(id, btn){
+  document.querySelectorAll("#nearArbTab,#arbTab,#bucketTab,#modelTab").forEach(el => el.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+  document.querySelectorAll(".tabbtn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
 }
 
 function tryParseJSON(value){
@@ -267,7 +316,6 @@ function parseOutcomePrices(value){
         .map(v => parseFloat(v.trim().replace(/^"+|"+$/g,"")))
         .filter(v => Number.isFinite(v));
     }
-
     const single = parseFloat(raw);
     return Number.isFinite(single) ? [single] : [];
   }
@@ -281,7 +329,7 @@ async function fetchJSON(url){
   try {
     return JSON.parse(text);
   } catch {
-    throw new Error("Non-JSON response from " + url + "\n\n" + text.slice(0,300));
+    throw new Error("Non-JSON response from " + url + "\\n\\n" + text.slice(0,300));
   }
 }
 
@@ -304,11 +352,18 @@ function heuristicFairYes(yesPrice, market){
   if(q.includes("ethereum") || q.includes("eth")) fair += 0.01;
   if(q.includes("election") || q.includes("president")) fair -= 0.005;
   if(q.includes("fed") || q.includes("rate")) fair -= 0.005;
+  if(q.includes("sentence") || q.includes("convicted")) fair -= 0.003;
 
   if(category.includes("crypto")) fair += 0.005;
   if(category.includes("politics")) fair -= 0.003;
 
   return Math.max(0.01, Math.min(0.99, fair));
+}
+
+function confidenceWeight(level){
+  if(level === "low") return 0.50;
+  if(level === "medium") return 0.75;
+  return 1.00;
 }
 
 function signalFromEdge(edge){
@@ -331,16 +386,22 @@ function normalizeBucketKey(question){
   return key;
 }
 
-function createArbCard(row){
-  const div = document.createElement("div");
-  div.className = "card";
-  div.innerHTML = `
-    <div class="result-title">${row.question}</div>
-    <div class="muted">YES ask ${row.yesAsk.toFixed(4)} · NO ask ${row.noAsk.toFixed(4)}</div>
-    <div class="muted">Total ${row.total.toFixed(4)} · Arb Edge <span class="edge">${row.edgePct.toFixed(2)}%</span></div>
-    <div class="pill pill-arb">Binary Arbitrage</div>
-  `;
-  return div;
+function loadManualStore(){
+  try { return JSON.parse(localStorage.getItem("manualFairStore") || "{}"); }
+  catch { return {}; }
+}
+
+function saveManualStore(store){
+  localStorage.setItem("manualFairStore", JSON.stringify(store));
+}
+
+function loadConfidenceStore(){
+  try { return JSON.parse(localStorage.getItem("confidenceStore") || "{}"); }
+  catch { return {}; }
+}
+
+function saveConfidenceStore(store){
+  localStorage.setItem("confidenceStore", JSON.stringify(store));
 }
 
 function createNearArbCard(row){
@@ -352,6 +413,18 @@ function createNearArbCard(row){
     <div class="muted">YES ask ${row.yesAsk.toFixed(4)} · NO ask ${row.noAsk.toFixed(4)}</div>
     <div class="muted">Total <span class="warn">${row.total.toFixed(4)}</span> · Distance from arb <span class="warn">${gapPct.toFixed(2)}%</span></div>
     <div class="pill pill-near">Near-Arb</div>
+  `;
+  return div;
+}
+
+function createArbCard(row){
+  const div = document.createElement("div");
+  div.className = "card";
+  div.innerHTML = `
+    <div class="result-title">${row.question}</div>
+    <div class="muted">YES ask ${row.yesAsk.toFixed(4)} · NO ask ${row.noAsk.toFixed(4)}</div>
+    <div class="muted">Total ${row.total.toFixed(4)} · Arb Edge <span class="edge">${row.edgePct.toFixed(2)}%</span></div>
+    <div class="pill pill-arb">Binary Arbitrage</div>
   `;
   return div;
 }
@@ -382,14 +455,56 @@ function createBucketCard(group){
 function createModelCard(row){
   const div = document.createElement("div");
   div.className = "card";
-  const [label, pill] = signalFromEdge(row.edge);
+  const [signalLabel, pillClass] = signalFromEdge(row.adjustedEdge);
 
   div.innerHTML = `
     <div class="result-title">${row.question}</div>
-    <div class="muted">Market YES ${(row.yesPrice * 100).toFixed(2)}% · Fair YES ${(row.fairYes * 100).toFixed(2)}%</div>
-    <div class="muted">Model Edge <span class="edge">${(row.edge * 100).toFixed(2)}%</span></div>
-    <div class="pill ${pill}">${label}</div>
+    <div class="muted">Market YES ${(row.yesPrice * 100).toFixed(2)}%</div>
+    <div class="muted">Auto Fair YES ${(row.autoFairYes * 100).toFixed(2)}%</div>
+    <div class="muted">Final Fair YES ${(row.finalFairYes * 100).toFixed(2)}%</div>
+    <div class="muted">Raw Edge <span class="edge">${(row.rawEdge * 100).toFixed(2)}%</span></div>
+    <div class="muted">Confidence: <span class="warn">${row.confidenceLabel}</span></div>
+    <div class="muted">Adjusted Edge <span class="edge">${(row.adjustedEdge * 100).toFixed(2)}%</span></div>
+    <div class="pill ${pillClass}">${signalLabel}</div>
   `;
+
+  const manualInput = document.createElement("input");
+  manualInput.type = "number";
+  manualInput.step = "0.1";
+  manualInput.min = "1";
+  manualInput.max = "99";
+  manualInput.placeholder = "Manual Fair YES %";
+  manualInput.value = row.manualFairYes !== null ? (row.manualFairYes * 100).toFixed(1) : "";
+
+  manualInput.addEventListener("change", () => {
+    const store = loadManualStore();
+    const val = parseFloat(manualInput.value);
+    if(Number.isFinite(val)){
+      store[row.id] = val / 100;
+    } else {
+      delete store[row.id];
+    }
+    saveManualStore(store);
+    runScan();
+  });
+
+  const confidenceSelect = document.createElement("select");
+  confidenceSelect.innerHTML = `
+    <option value="low">Low Confidence</option>
+    <option value="medium">Medium Confidence</option>
+    <option value="high">High Confidence</option>
+  `;
+  confidenceSelect.value = row.confidenceKey;
+
+  confidenceSelect.addEventListener("change", () => {
+    const store = loadConfidenceStore();
+    store[row.id] = confidenceSelect.value;
+    saveConfidenceStore(store);
+    runScan();
+  });
+
+  div.appendChild(manualInput);
+  div.appendChild(confidenceSelect);
   return div;
 }
 
@@ -397,29 +512,33 @@ async function runScan(){
   const proxy = getProxy();
   const status = document.getElementById("status");
   const debug = document.getElementById("debug");
+
   const marketsEl = document.getElementById("markets");
+  const booksReadEl = document.getElementById("booksRead");
+  const checkedMarketsEl = document.getElementById("checkedMarkets");
+
   const arbHitsEl = document.getElementById("arbHits");
   const nearArbHitsEl = document.getElementById("nearArbHits");
   const bucketHitsEl = document.getElementById("bucketHits");
   const modelHitsEl = document.getElementById("modelHits");
-  const booksReadEl = document.getElementById("booksRead");
 
-  const arbResults = document.getElementById("arbResults");
   const nearArbResults = document.getElementById("nearArbResults");
+  const arbResults = document.getElementById("arbResults");
   const bucketResults = document.getElementById("bucketResults");
   const modelResults = document.getElementById("modelResults");
 
-  arbResults.innerHTML = "";
   nearArbResults.innerHTML = "";
+  arbResults.innerHTML = "";
   bucketResults.innerHTML = "";
   modelResults.innerHTML = "";
 
   marketsEl.innerText = "0";
+  booksReadEl.innerText = "0";
+  checkedMarketsEl.innerText = "0";
   arbHitsEl.innerText = "0";
   nearArbHitsEl.innerText = "0";
   bucketHitsEl.innerText = "0";
   modelHitsEl.innerText = "0";
-  booksReadEl.innerText = "0";
 
   if(!proxy){
     status.innerText = "Missing proxy";
@@ -427,7 +546,7 @@ async function runScan(){
     return;
   }
 
-  try {
+  try{
     status.innerText = "Loading markets...";
     const markets = await fetchJSON(proxy + "/api/markets");
 
@@ -436,10 +555,13 @@ async function runScan(){
     }
 
     const limit = parseInt(localStorage.getItem("scanLimit") || "120", 10) || 120;
-    const arbThreshold = (parseFloat(localStorage.getItem("arbThreshold") || "0.1") || 0.1) / 100;
     const nearArbMax = parseFloat(localStorage.getItem("nearArbMax") || "1.03") || 1.03;
+    const arbThreshold = (parseFloat(localStorage.getItem("arbThreshold") || "0.1") || 0.1) / 100;
     const bucketThreshold = (parseFloat(localStorage.getItem("bucketThreshold") || "1.5") || 1.5) / 100;
     const modelThreshold = (parseFloat(localStorage.getItem("modelThreshold") || "2") || 2) / 100;
+
+    const manualStore = loadManualStore();
+    const confidenceStore = loadConfidenceStore();
 
     let scanned = 0;
     let booksRead = 0;
@@ -447,12 +569,13 @@ async function runScan(){
     let skippedNoBooks = 0;
     let skippedNoPrices = 0;
 
-    const arbRows = [];
     const nearArbRows = [];
-    const modelRows = [];
+    const arbRows = [];
     const bucketSeedRows = [];
+    const modelRows = [];
 
     const selected = markets.slice(0, limit);
+    checkedMarketsEl.innerText = String(selected.length);
 
     for(const m of selected){
       const prices = parseOutcomePrices(m.outcomePrices);
@@ -462,25 +585,40 @@ async function runScan(){
         const noPrice = prices[1];
 
         if(Number.isFinite(yesPrice) && Number.isFinite(noPrice)){
-          const fairYes = heuristicFairYes(yesPrice, m);
-          const edge = fairYes - yesPrice;
-
-          if(edge >= modelThreshold){
-            modelRows.push({
-              question: m.question || "Untitled market",
-              yesPrice,
-              noPrice,
-              fairYes,
-              edge
-            });
-          }
-
           const bucketKey = normalizeBucketKey(m.question || "");
           if(bucketKey){
             bucketSeedRows.push({
               bucketKey,
               question: m.question || "Untitled market",
               yesPrice
+            });
+          }
+
+          const autoFairYes = heuristicFairYes(yesPrice, m);
+          const manualFairYes = Number.isFinite(manualStore[m.id]) ? manualStore[m.id] : null;
+          const finalFairYes = manualFairYes !== null ? manualFairYes : autoFairYes;
+          const rawEdge = finalFairYes - yesPrice;
+
+          const confidenceKey = confidenceStore[m.id] || "medium";
+          const confidenceLabel =
+            confidenceKey === "low" ? "Low" :
+            confidenceKey === "medium" ? "Medium" : "High";
+
+          const adjustedEdge = rawEdge * confidenceWeight(confidenceKey);
+
+          if(adjustedEdge >= modelThreshold){
+            modelRows.push({
+              id: m.id,
+              question: m.question || "Untitled market",
+              yesPrice,
+              noPrice,
+              autoFairYes,
+              manualFairYes,
+              finalFairYes,
+              rawEdge,
+              adjustedEdge,
+              confidenceKey,
+              confidenceLabel
             });
           }
         } else {
@@ -499,7 +637,7 @@ async function runScan(){
       const yesToken = tokenIds[0];
       const noToken = tokenIds[1];
 
-      try {
+      try{
         const [yesBook, noBook] = await Promise.all([
           fetchJSON(proxy + "/api/book?token_id=" + encodeURIComponent(yesToken)),
           fetchJSON(proxy + "/api/book?token_id=" + encodeURIComponent(noToken))
@@ -530,7 +668,7 @@ async function runScan(){
             total,
             edgePct
           });
-        } else if(total > 1 && total <= nearArbMax) {
+        } else if(total > 1 && total <= nearArbMax){
           nearArbRows.push({
             question: m.question || "Untitled market",
             yesAsk,
@@ -540,27 +678,22 @@ async function runScan(){
         }
 
         status.innerText = "Scanning... " + scanned + " valid markets";
-      } catch (err) {
+      } catch(err){
         skippedNoBooks++;
       }
     }
 
     const bucketMap = new Map();
-
     for(const row of bucketSeedRows){
-      if(!bucketMap.has(row.bucketKey)){
-        bucketMap.set(row.bucketKey, []);
-      }
+      if(!bucketMap.has(row.bucketKey)) bucketMap.set(row.bucketKey, []);
       bucketMap.get(row.bucketKey).push(row);
     }
 
     const bucketGroups = [];
     for(const [key, items] of bucketMap.entries()){
       if(items.length < 3) continue;
-
       const sumYes = items.reduce((acc, item) => acc + item.yesPrice, 0);
       const edge = 1 - sumYes;
-
       if(edge > bucketThreshold){
         bucketGroups.push({
           key,
@@ -572,28 +705,28 @@ async function runScan(){
       }
     }
 
-    arbRows.sort((a,b) => b.edgePct - a.edgePct);
     nearArbRows.sort((a,b) => a.total - b.total);
-    modelRows.sort((a,b) => b.edge - a.edge);
+    arbRows.sort((a,b) => b.edgePct - a.edgePct);
     bucketGroups.sort((a,b) => b.edgePct - a.edgePct);
+    modelRows.sort((a,b) => b.adjustedEdge - a.adjustedEdge);
 
-    arbRows.slice(0, 50).forEach(r => arbResults.appendChild(createArbCard(r)));
-    nearArbRows.slice(0, 50).forEach(r => nearArbResults.appendChild(createNearArbCard(r)));
-    modelRows.slice(0, 100).forEach(r => modelResults.appendChild(createModelCard(r)));
-    bucketGroups.slice(0, 25).forEach(g => bucketResults.appendChild(createBucketCard(g)));
-
-    if(!arbRows.length){
-      const d = document.createElement("div");
-      d.className = "card";
-      d.innerHTML = '<div class="muted">No binary arbitrage opportunities found at the current threshold.</div>';
-      arbResults.appendChild(d);
-    }
+    nearArbRows.slice(0,50).forEach(r => nearArbResults.appendChild(createNearArbCard(r)));
+    arbRows.slice(0,50).forEach(r => arbResults.appendChild(createArbCard(r)));
+    bucketGroups.slice(0,25).forEach(g => bucketResults.appendChild(createBucketCard(g)));
+    modelRows.slice(0,100).forEach(r => modelResults.appendChild(createModelCard(r)));
 
     if(!nearArbRows.length){
       const d = document.createElement("div");
       d.className = "card";
       d.innerHTML = '<div class="muted">No near-arb markets found within the current max total.</div>';
       nearArbResults.appendChild(d);
+    }
+
+    if(!arbRows.length){
+      const d = document.createElement("div");
+      d.className = "card";
+      d.innerHTML = '<div class="muted">No binary arbitrage opportunities found at the current threshold.</div>';
+      arbResults.appendChild(d);
     }
 
     if(!bucketGroups.length){
@@ -606,12 +739,12 @@ async function runScan(){
     if(!modelRows.length){
       const d = document.createElement("div");
       d.className = "card";
-      d.innerHTML = '<div class="muted">No model edge opportunities found at the current threshold.</div>';
+      d.innerHTML = '<div class="muted">No model opportunities found at the current threshold.</div>';
       modelResults.appendChild(d);
     }
 
-    arbHitsEl.innerText = String(arbRows.length);
     nearArbHitsEl.innerText = String(nearArbRows.length);
+    arbHitsEl.innerText = String(arbRows.length);
     bucketHitsEl.innerText = String(bucketGroups.length);
     modelHitsEl.innerText = String(modelRows.length);
     status.innerText = "Done";
@@ -624,15 +757,15 @@ async function runScan(){
       "\nSkipped (no tokens): " + skippedNoTokens +
       "\nSkipped (no books/asks): " + skippedNoBooks +
       "\nSkipped (no prices): " + skippedNoPrices +
-      "\nBinary arb hits: " + arbRows.length +
       "\nNear-arb hits: " + nearArbRows.length +
+      "\nBinary arb hits: " + arbRows.length +
       "\nBucket hits: " + bucketGroups.length +
-      "\nModel edge hits: " + modelRows.length +
-      "\nBinary arb threshold: " + (arbThreshold * 100).toFixed(2) + "%" +
+      "\nModel hits: " + modelRows.length +
       "\nNear-arb max total: " + nearArbMax.toFixed(2) +
+      "\nBinary arb threshold: " + (arbThreshold * 100).toFixed(2) + "%" +
       "\nBucket threshold: " + (bucketThreshold * 100).toFixed(2) + "%" +
       "\nModel threshold: " + (modelThreshold * 100).toFixed(2) + "%";
-  } catch (err) {
+  } catch(err){
     status.innerText = "Failed";
     debug.innerText = err && err.message ? err.message : String(err);
   }
@@ -643,8 +776,8 @@ window.addEventListener("load", () => {
   if(savedProxy) document.getElementById("proxy").value = savedProxy;
 
   document.getElementById("scanLimit").value = localStorage.getItem("scanLimit") || "120";
-  document.getElementById("arbThreshold").value = localStorage.getItem("arbThreshold") || "0.1";
   document.getElementById("nearArbMax").value = localStorage.getItem("nearArbMax") || "1.03";
+  document.getElementById("arbThreshold").value = localStorage.getItem("arbThreshold") || "0.1";
   document.getElementById("bucketThreshold").value = localStorage.getItem("bucketThreshold") || "1.5";
   document.getElementById("modelThreshold").value = localStorage.getItem("modelThreshold") || "2";
 });
