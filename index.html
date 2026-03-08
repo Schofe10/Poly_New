@@ -1,681 +1,250 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Polymarket Edge Finder</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #07111f;
-      color: #fff;
-      margin: 0;
-      padding: 22px;
-    }
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Polymarket Edge Finder Turbo</title>
 
-    h1 {
-      margin: 0 0 24px 0;
-      font-size: 34px;
-      font-weight: 800;
-    }
+<style>
+body{
+font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+background:#07111f;
+color:#fff;
+margin:0;
+padding:22px;
+}
 
-    .card {
-      background: #0d1b38;
-      border-radius: 20px;
-      padding: 20px;
-      margin-bottom: 20px;
-    }
+h1{
+margin:0 0 24px;
+font-size:34px;
+font-weight:800;
+}
 
-    .label {
-      color: rgba(255,255,255,0.75);
-      font-size: 13px;
-      margin-bottom: 10px;
-    }
+.card{
+background:#0d1b38;
+border-radius:20px;
+padding:20px;
+margin-bottom:20px;
+}
 
-    .stat {
-      font-size: 30px;
-      font-weight: 800;
-      color: #15f47a;
-    }
+.label{
+color:rgba(255,255,255,.75);
+font-size:13px;
+margin-bottom:10px;
+}
 
-    input, select {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 14px;
-      border-radius: 14px;
-      border: none;
-      font-size: 16px;
-      margin-bottom: 14px;
-    }
+.stat{
+font-size:30px;
+font-weight:800;
+color:#15f47a;
+}
 
-    button {
-      background: #15d95e;
-      color: white;
-      border: none;
-      border-radius: 16px;
-      padding: 16px 24px;
-      font-size: 17px;
-      font-weight: 700;
-      cursor: pointer;
-    }
+input{
+width:100%;
+padding:14px;
+border-radius:14px;
+border:none;
+font-size:16px;
+margin-bottom:14px;
+}
 
-    .full {
-      width: 100%;
-    }
+button{
+background:#15d95e;
+color:white;
+border:none;
+border-radius:16px;
+padding:16px 24px;
+font-size:17px;
+font-weight:700;
+cursor:pointer;
+}
 
-    pre {
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-size: 13px;
-      line-height: 1.45;
-      margin: 0;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    }
+.full{width:100%;}
 
-    .result-title {
-      font-weight: 800;
-      font-size: 17px;
-      margin-bottom: 8px;
-      line-height: 1.35;
-    }
+.result-title{
+font-weight:800;
+font-size:17px;
+margin-bottom:8px;
+}
 
-    .muted {
-      color: rgba(255,255,255,0.75);
-      font-size: 14px;
-      line-height: 1.5;
-    }
+.muted{
+color:rgba(255,255,255,.75);
+font-size:14px;
+}
 
-    .edge {
-      color: #15f47a;
-      font-weight: 700;
-    }
+.edge{
+color:#15f47a;
+font-weight:700;
+}
 
-    .row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
+.pill{
+display:inline-block;
+padding:8px 12px;
+border-radius:999px;
+font-size:12px;
+font-weight:700;
+margin-top:10px;
+}
 
-    .row > div {
-      flex: 1;
-      min-width: 120px;
-    }
+.pill-strong{background:rgba(21,244,122,.18);color:#15f47a;}
+.pill-buy{background:rgba(100,200,255,.18);color:#78c9ff;}
+.pill-watch{background:rgba(255,211,77,.18);color:#ffd34d;}
+.pill-none{background:rgba(255,255,255,.12);color:rgba(255,255,255,.75);}
 
-    .pill {
-      display: inline-block;
-      padding: 8px 12px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      margin-top: 10px;
-    }
-
-    .pill-strong {
-      background: rgba(21, 244, 122, 0.18);
-      color: #15f47a;
-    }
-
-    .pill-buy {
-      background: rgba(100, 200, 255, 0.18);
-      color: #78c9ff;
-    }
-
-    .pill-watch {
-      background: rgba(255, 211, 77, 0.18);
-      color: #ffd34d;
-    }
-
-    .pill-none {
-      background: rgba(255,255,255,0.12);
-      color: rgba(255,255,255,0.75);
-    }
-
-    .pill-bucket {
-      background: rgba(255, 100, 180, 0.18);
-      color: #ff84c1;
-    }
-
-    .small-btn {
-      padding: 10px 14px;
-      font-size: 14px;
-      border-radius: 12px;
-      margin-top: 10px;
-    }
-
-    .watch-btn {
-      background: #1e88e5;
-    }
-
-    .danger-btn {
-      background: #e53935;
-    }
-
-    .section-title {
-      font-size: 20px;
-      font-weight: 800;
-      margin: 28px 0 14px;
-    }
-
-    .tiny {
-      font-size: 12px;
-      color: rgba(255,255,255,0.6);
-    }
-
-    .divider {
-      height: 1px;
-      background: rgba(255,255,255,0.08);
-      margin: 14px 0;
-    }
-  </style>
+.section-title{
+font-size:20px;
+font-weight:800;
+margin:28px 0 14px;
+}
+</style>
 </head>
+
 <body>
-  <h1>Polymarket Edge Finder</h1>
-
-  <div class="card">
-    <div class="label">Proxy URL</div>
-    <input id="proxy" placeholder="https://polymarket-proxy.d-schofe.workers.dev" />
-    <button onclick="saveProxy()">Save Proxy</button>
-  </div>
-
-  <div class="card">
-    <div class="label">Scanner Settings</div>
-    <input id="scanLimit" type="number" min="10" max="1000" value="150" placeholder="How many opportunities to show" />
-    <button onclick="saveSettings()">Save Settings</button>
-  </div>
-
-  <button class="full" onclick="runScan()">Scan Markets</button>
-
-  <div class="card">
-    <div class="label">Status</div>
-    <div id="status" class="muted">Idle</div>
-  </div>
-
-  <div class="card">
-    <div class="row">
-      <div>
-        <div class="label">Markets scanned</div>
-        <div id="markets" class="stat">0</div>
-      </div>
-      <div>
-        <div class="label">Buy/Watch hits</div>
-        <div id="hits" class="stat">0</div>
-      </div>
-      <div>
-        <div class="label">Bucket hits</div>
-        <div id="bucketHits" class="stat">0</div>
-      </div>
-      <div>
-        <div class="label">Watchlist count</div>
-        <div id="watchCount" class="stat">0</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="label">Debug</div>
-    <pre id="debug">No messages yet.</pre>
-  </div>
-
-  <div class="section-title">Top Opportunities</div>
-  <div id="results"></div>
-
-  <div class="section-title">Bucket Opportunities</div>
-  <div id="bucketResults"></div>
-
-  <div class="section-title">Watchlist</div>
-  <div id="watchlist"></div>
-
-  <script>
-    const statusEl = document.getElementById("status");
-    const marketsEl = document.getElementById("markets");
-    const hitsEl = document.getElementById("hits");
-    const bucketHitsEl = document.getElementById("bucketHits");
-    const watchCountEl = document.getElementById("watchCount");
-    const debugEl = document.getElementById("debug");
-    const resultsEl = document.getElementById("results");
-    const bucketResultsEl = document.getElementById("bucketResults");
-    const watchlistEl = document.getElementById("watchlist");
-    const proxyEl = document.getElementById("proxy");
-    const scanLimitEl = document.getElementById("scanLimit");
-
-    function setStatus(msg) {
-      statusEl.textContent = msg;
-    }
-
-    function setDebug(msg) {
-      debugEl.textContent = msg;
-    }
-
-    function saveProxy() {
-      const url = proxyEl.value.trim().replace(/\/+$/, "");
-      localStorage.setItem("proxy", url);
-      setStatus("Proxy saved");
-      setDebug("Saved proxy:\n" + url);
-    }
-
-    function getProxy() {
-      return (localStorage.getItem("proxy") || "").trim().replace(/\/+$/, "");
-    }
-
-    function saveSettings() {
-      const limit = parseInt(scanLimitEl.value, 10);
-      localStorage.setItem("scanLimit", String(limit || 150));
-      setStatus("Settings saved");
-      setDebug("Saved scan limit: " + (limit || 150));
-    }
-
-    function getScanLimit() {
-      const raw = parseInt(localStorage.getItem("scanLimit") || "150", 10);
-      return Number.isFinite(raw) && raw > 0 ? raw : 150;
-    }
-
-    function tryParseJSON(value) {
-      if (typeof value !== "string") return value;
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value;
-      }
-    }
-
-    function parseOutcomePrices(value) {
-      const raw = tryParseJSON(value);
-
-      if (Array.isArray(raw)) {
-        return raw.map(v => parseFloat(v)).filter(v => Number.isFinite(v));
-      }
-
-      if (typeof raw === "string") {
-        if (raw.includes(",")) {
-          return raw
-            .split(",")
-            .map(v => parseFloat(v.trim().replace(/^"+|"+$/g, "")))
-            .filter(v => Number.isFinite(v));
-        }
-
-        const single = parseFloat(raw);
-        return Number.isFinite(single) ? [single] : [];
-      }
-
-      return [];
-    }
-
-    async function fetchJSON(url) {
-      const res = await fetch(url);
-      const text = await res.text();
-
-      try {
-        return JSON.parse(text);
-      } catch {
-        throw new Error("Non-JSON response from " + url + "\n\n" + text.slice(0, 300));
-      }
-    }
-
-    function getSavedFairProbabilities() {
-      try {
-        return JSON.parse(localStorage.getItem("fairProbabilities") || "{}");
-      } catch {
-        return {};
-      }
-    }
-
-    function saveFairProbability(marketId, value) {
-      const store = getSavedFairProbabilities();
-      store[marketId] = value;
-      localStorage.setItem("fairProbabilities", JSON.stringify(store));
-    }
-
-    function getWatchlist() {
-      try {
-        return JSON.parse(localStorage.getItem("watchlist") || "[]");
-      } catch {
-        return [];
-      }
-    }
-
-    function setWatchlist(items) {
-      localStorage.setItem("watchlist", JSON.stringify(items));
-      renderWatchlist();
-    }
-
-    function addToWatchlist(item) {
-      const watch = getWatchlist();
-      if (watch.find(x => x.id === item.id)) return;
-      watch.unshift(item);
-      setWatchlist(watch);
-    }
-
-    function removeFromWatchlist(id) {
-      const watch = getWatchlist().filter(x => x.id !== id);
-      setWatchlist(watch);
-    }
-
-    function signalFromEdge(edge) {
-      if (edge >= 0.10) return { label: "Strong Buy", className: "pill-strong" };
-      if (edge >= 0.05) return { label: "Buy", className: "pill-buy" };
-      if (edge >= 0.02) return { label: "Watch", className: "pill-watch" };
-      return { label: "No Edge", className: "pill-none" };
-    }
-
-    function heuristicFairYes(market, yesPrice) {
-      let fair = yesPrice;
-      const q = (market.question || "").toLowerCase();
-      const category = (market.category || "").toLowerCase();
-
-      if (yesPrice < 0.15) fair += 0.02;
-      if (yesPrice > 0.85) fair -= 0.02;
-
-      if (q.includes("bitcoin") || q.includes("btc")) fair += 0.01;
-      if (q.includes("ethereum") || q.includes("eth")) fair += 0.01;
-      if (q.includes("election") || q.includes("president")) fair -= 0.005;
-      if (q.includes("fed") || q.includes("rate")) fair -= 0.005;
-      if (category.includes("crypto")) fair += 0.005;
-      if (category.includes("politics")) fair -= 0.003;
-
-      fair = Math.max(0.01, Math.min(0.99, fair));
-      return fair;
-    }
-
-    function createResultCard(row) {
-      const div = document.createElement("div");
-      div.className = "card";
-
-      const signal = signalFromEdge(row.edge);
-
-      div.innerHTML = `
-        <div class="result-title">${row.question}</div>
-        <div class="muted">YES ${row.yesPrice.toFixed(3)} · NO ${row.noPrice.toFixed(3)} · Total ${row.total.toFixed(3)}</div>
-        <div class="muted">Market YES ${(row.yesPrice * 100).toFixed(1)}% · Fair YES ${(row.fairYes * 100).toFixed(1)}%</div>
-        <div class="muted">Edge <span class="edge">${(row.edge * 100).toFixed(2)}%</span></div>
-        <div class="pill ${signal.className}">${signal.label}</div>
-        <div class="tiny">Category: ${row.category || "Unknown"}</div>
-      `;
-
-      const fairInput = document.createElement("input");
-      fairInput.type = "number";
-      fairInput.min = "1";
-      fairInput.max = "99";
-      fairInput.step = "0.1";
-      fairInput.value = (row.fairYes * 100).toFixed(1);
-      fairInput.placeholder = "Your fair YES %";
-
-      fairInput.addEventListener("change", () => {
-        const val = parseFloat(fairInput.value);
-        if (!Number.isFinite(val)) return;
-        saveFairProbability(row.id, val / 100);
-        runScan();
-      });
-
-      const watchBtn = document.createElement("button");
-      watchBtn.className = "small-btn watch-btn";
-      watchBtn.textContent = "Add to Watchlist";
-      watchBtn.onclick = () => {
-        addToWatchlist({
-          id: row.id,
-          question: row.question,
-          yesPrice: row.yesPrice,
-          noPrice: row.noPrice,
-          fairYes: row.fairYes,
-          edge: row.edge,
-          category: row.category || ""
-        });
-      };
-
-      div.appendChild(fairInput);
-      div.appendChild(watchBtn);
-
-      return div;
-    }
-
-    function normalizeBucketKey(question) {
-      if (!question) return null;
-
-      let key = question.toLowerCase();
-
-      key = key
-        .replace(/\$?\d+(\.\d+)?k?\+?/gi, "{num}")
-        .replace(/\b(over|under|between|above|below|at least|at most)\b/gi, "{range}")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      if (!key.includes("{num}") && !key.includes("{range}")) return null;
-      return key;
-    }
-
-    function buildBucketGroups(rows) {
-      const groups = new Map();
-
-      for (const row of rows) {
-        const key = normalizeBucketKey(row.question);
-        if (!key) continue;
-
-        if (!groups.has(key)) {
-          groups.set(key, []);
-        }
-        groups.get(key).push(row);
-      }
-
-      const out = [];
-      for (const [key, items] of groups.entries()) {
-        if (items.length < 3) continue;
-
-        const sumYes = items.reduce((acc, item) => acc + item.yesPrice, 0);
-        const edge = 1 - sumYes;
-
-        out.push({
-          key,
-          items,
-          sumYes,
-          edge
-        });
-      }
-
-      out.sort((a, b) => b.edge - a.edge);
-      return out;
-    }
-
-    function createBucketCard(group) {
-      const div = document.createElement("div");
-      div.className = "card";
-
-      const topTitle = group.items[0]?.question || "Bucket Group";
-      const isInteresting = group.edge > 0.02;
-
-      let html = `
-        <div class="result-title">${topTitle}</div>
-        <div class="muted">Bucket count: ${group.items.length}</div>
-        <div class="muted">Sum of YES prices: ${group.sumYes.toFixed(3)}</div>
-        <div class="muted">Bucket edge: <span class="edge">${(group.edge * 100).toFixed(2)}%</span></div>
-        <div class="pill ${isInteresting ? 'pill-bucket' : 'pill-none'}">${isInteresting ? 'Bucket Opportunity' : 'No Bucket Edge'}</div>
-        <div class="divider"></div>
-      `;
-
-      for (const item of group.items.slice(0, 6)) {
-        html += `
-          <div class="muted">• ${item.question} — YES ${item.yesPrice.toFixed(3)}</div>
-        `;
-      }
-
-      if (group.items.length > 6) {
-        html += `<div class="tiny">+${group.items.length - 6} more buckets</div>`;
-      }
-
-      div.innerHTML = html;
-      return div;
-    }
-
-    function renderWatchlist() {
-      const items = getWatchlist();
-      watchCountEl.textContent = String(items.length);
-      watchlistEl.innerHTML = "";
-
-      if (!items.length) {
-        const empty = document.createElement("div");
-        empty.className = "card";
-        empty.innerHTML = `<div class="muted">No watchlist items yet.</div>`;
-        watchlistEl.appendChild(empty);
-        return;
-      }
-
-      for (const item of items) {
-        const signal = signalFromEdge(item.edge);
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-          <div class="result-title">${item.question}</div>
-          <div class="muted">YES ${item.yesPrice.toFixed(3)} · NO ${item.noPrice.toFixed(3)}</div>
-          <div class="muted">Fair YES ${(item.fairYes * 100).toFixed(1)}% · Edge <span class="edge">${(item.edge * 100).toFixed(2)}%</span></div>
-          <div class="pill ${signal.className}">${signal.label}</div>
-        `;
-
-        const removeBtn = document.createElement("button");
-        removeBtn.className = "small-btn danger-btn";
-        removeBtn.textContent = "Remove";
-        removeBtn.onclick = () => removeFromWatchlist(item.id);
-
-        div.appendChild(removeBtn);
-        watchlistEl.appendChild(div);
-      }
-    }
-
-    async function runScan() {
-      resultsEl.innerHTML = "";
-      bucketResultsEl.innerHTML = "";
-      marketsEl.textContent = "0";
-      hitsEl.textContent = "0";
-      bucketHitsEl.textContent = "0";
-
-      const proxy = getProxy();
-      if (!proxy) {
-        setStatus("Missing proxy");
-        setDebug("Enter your Worker base URL and tap Save Proxy first.");
-        return;
-      }
-
-      let validScanned = 0;
-      let hits = 0;
-      let skippedNoPrices = 0;
-      let firstSample = null;
-
-      try {
-        setStatus("Loading markets...");
-        setDebug("Using proxy:\n" + proxy);
-
-        const markets = await fetchJSON(proxy + "/api/markets");
-
-        if (!Array.isArray(markets)) {
-          throw new Error("Markets response was not an array.");
-        }
-
-        const savedFairs = getSavedFairProbabilities();
-        const rows = [];
-
-        setStatus("Loaded " + markets.length + " markets. Scanning...");
-
-        for (const market of markets) {
-          const prices = parseOutcomePrices(market.outcomePrices);
-
-          if (!firstSample) {
-            firstSample = {
-              question: market.question || null,
-              outcomePrices: market.outcomePrices ?? null,
-              parsedOutcomePrices: prices,
-              active: market.active,
-              closed: market.closed
-            };
-          }
-
-          if (prices.length < 2) {
-            skippedNoPrices++;
-            continue;
-          }
-
-          const yesPrice = prices[0];
-          const noPrice = prices[1];
-
-          if (!Number.isFinite(yesPrice) || !Number.isFinite(noPrice)) {
-            skippedNoPrices++;
-            continue;
-          }
-
-          validScanned++;
-
-          const storedFair = savedFairs[market.id];
-          const fairYes = Number.isFinite(storedFair)
-            ? storedFair
-            : heuristicFairYes(market, yesPrice);
-
-          const edge = fairYes - yesPrice;
-
-          const row = {
-            id: market.id,
-            question: market.question || "Untitled market",
-            category: market.category || "",
-            yesPrice,
-            noPrice,
-            total: yesPrice + noPrice,
-            fairYes,
-            edge
-          };
-
-          rows.push(row);
-
-          if (edge >= 0.02) hits++;
-        }
-
-        rows.sort((a, b) => b.edge - a.edge);
-
-        const limit = getScanLimit();
-        const topRows = rows.slice(0, limit);
-
-        for (const row of topRows) {
-          resultsEl.appendChild(createResultCard(row));
-        }
-
-        const bucketGroups = buildBucketGroups(rows);
-        const interestingBuckets = bucketGroups.filter(g => g.edge > 0.02);
-        bucketHitsEl.textContent = String(interestingBuckets.length);
-
-        if (interestingBuckets.length) {
-          for (const group of interestingBuckets.slice(0, 25)) {
-            bucketResultsEl.appendChild(createBucketCard(group));
-          }
-        } else {
-          const emptyBucket = document.createElement("div");
-          emptyBucket.className = "card";
-          emptyBucket.innerHTML = `<div class="muted">No bucket opportunities detected yet.</div>`;
-          bucketResultsEl.appendChild(emptyBucket);
-        }
-
-        marketsEl.textContent = String(validScanned);
-        hitsEl.textContent = String(hits);
-        setStatus("Done");
-
-        setDebug(
-          "Finished scan\n" +
-          "Markets returned: " + markets.length + "\n" +
-          "Valid markets scanned: " + validScanned + "\n" +
-          "Skipped (no prices): " + skippedNoPrices + "\n" +
-          "Buy/Watch hits: " + hits + "\n" +
-          "Bucket hits: " + interestingBuckets.length + "\n\n" +
-          "First market sample:\n" +
-          JSON.stringify(firstSample, null, 2)
-        );
-
-        renderWatchlist();
-      } catch (err) {
-        setStatus("Failed");
-        setDebug("Scan failed:\n" + (err && err.message ? err.message : String(err)));
-      }
-    }
-
-    window.addEventListener("load", () => {
-      const savedProxy = getProxy();
-      if (savedProxy) proxyEl.value = savedProxy;
-
-      scanLimitEl.value = String(getScanLimit());
-      renderWatchlist();
-    });
-  </script>
+
+<h1>Polymarket Turbo Scanner</h1>
+
+<div class="card">
+<div class="label">Proxy URL</div>
+<input id="proxy" placeholder="https://polymarket-proxy.yourname.workers.dev"/>
+<button onclick="saveProxy()">Save Proxy</button>
+</div>
+
+<button class="full" onclick="runScan()">Scan Markets</button>
+
+<div class="card">
+<div class="label">Status</div>
+<div id="status">Idle</div>
+</div>
+
+<div class="card">
+<div class="label">Markets scanned</div>
+<div id="markets" class="stat">0</div>
+</div>
+
+<div class="card">
+<div class="label">Edge Opportunities</div>
+<div id="hits" class="stat">0</div>
+</div>
+
+<div class="section-title">Top Opportunities</div>
+<div id="results"></div>
+
+<script>
+
+function saveProxy(){
+const url=document.getElementById("proxy").value.trim().replace(/\/+$/,"")
+localStorage.setItem("proxy",url)
+}
+
+function getProxy(){
+return(localStorage.getItem("proxy")||"").replace(/\/+$/,"")
+}
+
+function parseOutcomePrices(value){
+
+if(!value) return []
+
+try{
+const parsed=JSON.parse(value)
+if(Array.isArray(parsed)){
+return parsed.map(x=>parseFloat(x)).filter(x=>Number.isFinite(x))
+}
+}catch{}
+
+return []
+}
+
+function heuristicFair(yes){
+
+let fair=yes
+
+if(yes<0.15) fair+=0.02
+if(yes>0.85) fair-=0.02
+
+return Math.max(.01,Math.min(.99,fair))
+}
+
+async function runScan(){
+
+const proxy=getProxy()
+
+if(!proxy){
+alert("Set proxy first")
+return
+}
+
+const status=document.getElementById("status")
+const marketsEl=document.getElementById("markets")
+const hitsEl=document.getElementById("hits")
+const results=document.getElementById("results")
+
+results.innerHTML=""
+status.innerText="Loading markets..."
+
+let markets=[]
+
+try{
+
+const r=await fetch(proxy+"/api/markets")
+markets=await r.json()
+
+}catch(e){
+status.innerText="Failed loading markets"
+return
+}
+
+let scanned=0
+let hits=0
+
+for(const m of markets){
+
+const prices=parseOutcomePrices(m.outcomePrices)
+
+if(prices.length<2) continue
+
+const yes=prices[0]
+const no=prices[1]
+
+if(!Number.isFinite(yes)||!Number.isFinite(no)) continue
+
+scanned++
+
+const fair=heuristicFair(yes)
+const edge=fair-yes
+
+if(edge>0.02){
+
+hits++
+
+const div=document.createElement("div")
+div.className="card"
+
+let signal="Watch"
+let pill="pill-watch"
+
+if(edge>0.1){signal="Strong Buy";pill="pill-strong"}
+else if(edge>0.05){signal="Buy";pill="pill-buy"}
+
+div.innerHTML=`
+<div class="result-title">${m.question}</div>
+<div class="muted">YES ${yes.toFixed(3)} Â· NO ${no.toFixed(3)}</div>
+<div class="muted">Edge <span class="edge">${(edge*100).toFixed(2)}%</span></div>
+<div class="pill ${pill}">${signal}</div>
+`
+
+results.appendChild(div)
+
+}
+
+}
+
+marketsEl.innerText=scanned
+hitsEl.innerText=hits
+status.innerText="Done"
+
+}
+
+</script>
+
 </body>
 </html>
