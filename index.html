@@ -78,17 +78,37 @@ async function midpoint(token){
 }
 
 function parseTokens(value){
-  if(Array.isArray(value)) return value;
-  if(typeof value==="string"){
-    try{
-      const parsed=JSON.parse(value);
-      if(Array.isArray(parsed)) return parsed;
-    }catch(e){}
-    if(value.includes(",")) return value.split(",").map(x=>x.trim()).filter(Boolean);
-  }
-  return [];
+
+if(!value) return [];
+
+if(Array.isArray(value)) return value;
+
+if(typeof value === "string"){
+
+try{
+const parsed = JSON.parse(value);
+if(Array.isArray(parsed)) return parsed;
+}catch(e){}
+
+if(value.includes(",")){
+return value.split(",").map(v=>v.trim());
 }
 
+}
+
+if(typeof value === "object"){
+
+if(value.yes && value.no)
+return [value.yes,value.no];
+
+if(value.YES && value.NO)
+return [value.YES,value.NO];
+
+}
+
+return [];
+
+}
 async function runScan(){
   document.getElementById("results").innerHTML="";
   document.getElementById("markets").innerText="0";
