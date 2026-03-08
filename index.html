@@ -232,6 +232,7 @@
         setStatus("Loaded " + markets.length + " markets. Scanning...");
 
         for (const market of markets) {
+          if (!market.active || market.closed) continue;
           try {
             if (market.closed === true || market.active === false) {
               skippedClosed++;
