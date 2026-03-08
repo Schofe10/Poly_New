@@ -3,157 +3,180 @@
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Polymarket Edge Finder</title>
-
 <style>
-body{
-font-family:-apple-system,BlinkMacSystemFont;
-background:#0b0f14;
-color:white;
-padding:20px;
-}
-
-button{
-padding:14px 20px;
-background:#00c853;
-border:none;
-border-radius:10px;
-color:white;
-font-size:16px;
-margin-top:10px;
-}
-
-.card{
-background:#111827;
-padding:16px;
-margin-top:14px;
-border-radius:10px;
-}
-
-.stat{
-font-size:28px;
-font-weight:bold;
-color:#00e676;
-}
-
-.small{
-opacity:.7;
-font-size:13px;
-}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0b0f14;color:#fff;padding:20px;margin:0}
+button{padding:14px 20px;background:#00c853;border:none;border-radius:10px;color:white;font-size:16px;margin-top:10px}
+.card{background:#111827;padding:16px;margin-top:14px;border-radius:10px}
+.stat{font-size:28px;font-weight:bold;color:#00e676}
+.small{opacity:.75;font-size:13px}
+input{width:100%;padding:10px;border-radius:8px;margin-top:6px;border:none}
+pre{white-space:pre-wrap;word-break:break-word}
 </style>
 </head>
-
 <body>
 
 <h2>Polymarket Edge Finder</h2>
 
 <div class="card">
-<div class="small">Proxy URL</div>
-<input id="proxy" placeholder="https://schofe.workers.dev"
-style="width:100%;padding:10px;border-radius:8px;margin-top:6px">
-<button onclick="saveProxy()">Save Proxy</button>
+  <div class="small">Proxy URL</div>
+  <input id="proxy" placeholder="https://schofe.workers.dev">
+  <button onclick="saveProxy()">Save Proxy</button>
 </div>
 
 <button onclick="runScan()">Scan Markets</button>
 
 <div class="card">
-<div class="small">Markets scanned</div>
-<div class="stat" id="markets">0</div>
+  <div class="small">Status</div>
+  <div id="status">Idle</div>
 </div>
 
 <div class="card">
-<div class="small">Arbitrage hits</div>
-<div class="stat" id="arb">0</div>
+  <div class="small">Markets scanned</div>
+  <div class="stat" id="markets">0</div>
+</div>
+
+<div class="card">
+  <div class="small">Arbitrage hits</div>
+  <div class="stat" id="arb">0</div>
+</div>
+
+<div class="card">
+  <div class="small">Debug</div>
+  <pre id="debug">No messages yet.</pre>
 </div>
 
 <div id="results"></div>
 
 <script>
-
 function saveProxy(){
-const url=document.getElementById("proxy").value;
-localStorage.setItem("proxy",url);
-alert("Proxy saved");
+  const url=document.getElementById("proxy").value.trim();
+  localStorage.setItem("proxy",url);
+  document.getElementById("status").innerText="Proxy saved";
+  document.getElementById("debug").innerText="Saved proxy: " + url;
 }
 
 function getProxy(){
-return localStorage.getItem("proxy");
+  return localStorage.getItem("proxy") || "";
+}
+
+function setStatus(msg){
+  document.getElementById("status").innerText=msg;
+}
+
+function setDebug(msg){
+  document.getElementById("debug").innerText=msg;
 }
 
 async function midpoint(token){
+  const proxy=getProxy();
+  const r=await fetch(proxy+"/api/midpoint?token_id="+encodeURIComponent(token));
+  const text=await r.text();
+  let data={};
+  try { data=JSON.parse(text); } catch(e) { throw new Error("Midpoint not JSON: " + text.slice(0,200)); }
+  const n=parseFloat(data.mid||data.mid_price);
+  return Number.isFinite(n) ? n : null;
+}
 
-const proxy=getProxy();
-
-const r=await fetch(proxy+"/api/midpoint?token_id="+token);
-const data=await r.json();
-
-return parseFloat(data.mid||data.mid_price);
-
+function parseTokens(value){
+  if(Array.isArray(value)) return value;
+  if(typeof value==="string"){
+    try{
+      const parsed=JSON.parse(value);
+      if(Array.isArray(parsed)) return parsed;
+    }catch(e){}
+    if(value.includes(",")) return value.split(",").map(x=>x.trim()).filter(Boolean);
+  }
+  return [];
 }
 
 async function runScan(){
+  document.getElementById("results").innerHTML="";
+  document.getElementById("markets").innerText="0";
+  document.getElementById("arb").innerText="0";
 
-document.getElementById("results").innerHTML="";
-document.getElementById("markets").innerText="0";
-document.getElementById("arb").innerText="0";
+  const proxy=getProxy();
+  if(!proxy){
+    setStatus("Missing proxy");
+    setDebug("Paste your Worker base URL first, then tap Save Proxy.");
+    return;
+  }
 
-const proxy=getProxy();
+  try{
+    setStatus("Loading markets...");
+    setDebug("Using proxy: " + proxy);
 
-const res=await fetch(proxy+"/api/markets");
-const markets=await res.json();
+    const res=await fetch(proxy+"/api/markets");
+    const raw=await res.text();
 
-let scanned=0;
-let arbHits=0;
+    let markets;
+    try{
+      markets=JSON.parse(raw);
+    }catch(e){
+      throw new Error("Markets response was not valid JSON: " + raw.slice(0,300));
+    }
 
-for(const m of markets){
+    if(!Array.isArray(markets)){
+      throw new Error("Markets response was not an array.");
+    }
 
-try{
+    setStatus("Loaded " + markets.length + " markets. Scanning...");
+    let scanned=0;
+    let arbHits=0;
+    let skipped=0;
 
-if(!m.clobTokenIds) continue;
+    for(const m of markets){
+      try{
+        const tokens=parseTokens(m.clobTokenIds);
+        if(tokens.length<2){ skipped++; continue; }
 
-const tokens=Array.isArray(m.clobTokenIds)
-?m.clobTokenIds
-:JSON.parse(m.clobTokenIds);
+        const yes=tokens[0];
+        const no=tokens[1];
+        if(!yes || !no){ skipped++; continue; }
 
-if(tokens.length<2) continue;
+        const [yesPrice,noPrice]=await Promise.all([midpoint(yes), midpoint(no)]);
+        if(!Number.isFinite(yesPrice) || !Number.isFinite(noPrice)){ skipped++; continue; }
 
-const yes=tokens[0];
-const no=tokens[1];
+        scanned++;
+        document.getElementById("markets").innerText=scanned;
 
-const yesPrice=await midpoint(yes);
-const noPrice=await midpoint(no);
+        const total=yesPrice+noPrice;
+        if(total<1){
+          arbHits++;
+          document.getElementById("arb").innerText=arbHits;
 
-if(!yesPrice||!noPrice) continue;
+          const div=document.createElement("div");
+          div.className="card";
+          div.innerHTML =
+            "<b>"+(m.question||"Untitled market")+"</b><br>" +
+            "YES "+yesPrice.toFixed(3)+" / NO "+noPrice.toFixed(3)+"<br>" +
+            "EDGE "+((1-total)*100).toFixed(2)+"%";
+          document.getElementById("results").appendChild(div);
+        }
 
-scanned++;
-document.getElementById("markets").innerText=scanned;
+        setStatus("Scanning... " + scanned + " valid markets");
+      }catch(innerErr){
+        skipped++;
+      }
+    }
 
-const total=yesPrice+noPrice;
-
-if(total<1){
-
-arbHits++;
-document.getElementById("arb").innerText=arbHits;
-
-const div=document.createElement("div");
-div.className="card";
-
-div.innerHTML=
-"<b>"+m.question+"</b><br>"+
-"YES "+yesPrice.toFixed(2)+" / NO "+noPrice.toFixed(2)+"<br>"+
-"EDGE "+((1-total)*100).toFixed(2)+"%";
-
-document.getElementById("results").appendChild(div);
-
+    setStatus("Done");
+    setDebug(
+      "Finished scan\n" +
+      "Markets returned: " + markets.length + "\n" +
+      "Valid markets scanned: " + scanned + "\n" +
+      "Skipped: " + skipped + "\n" +
+      "Arb hits: " + arbHits
+    );
+  }catch(err){
+    setStatus("Failed");
+    setDebug(err.message || String(err));
+  }
 }
 
-}catch(e){
-continue;
-}
-
-}
-
-}
-
+window.addEventListener("load", ()=>{
+  const saved=getProxy();
+  if(saved) document.getElementById("proxy").value=saved;
+});
 </script>
 
 </body>
