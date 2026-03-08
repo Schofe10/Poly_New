@@ -1,154 +1,248 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Polymarket Edge Stable</title>
-
-<style>
-body{
-font-family:-apple-system,BlinkMacSystemFont;
-background:#0b0f14;
-color:white;
-padding:20px;
-}
-
-button{
-padding:14px 20px;
-background:#00c853;
-border:none;
-border-radius:10px;
-color:white;
-font-size:16px;
-}
-
-.card{
-background:#111827;
-padding:16px;
-margin-top:14px;
-border-radius:10px;
-}
-
-.stat{
-font-size:28px;
-font-weight:bold;
-color:#00e676;
-}
-
-.small{
-opacity:.7;
-font-size:13px;
-}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Polymarket Edge Stable</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0b0f14;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 32px;
+    }
+    p {
+      color: #9aa4b2;
+      line-height: 1.5;
+    }
+    button {
+      background: #00c853;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 16px;
+      font-weight: 700;
+      margin: 10px 0 18px 0;
+    }
+    .card {
+      background: #121923;
+      border: 1px solid #1f2937;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .label {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .stat {
+      font-size: 30px;
+      font-weight: 800;
+      color: #00e676;
+    }
+    .row {
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+    .muted {
+      color: #94a3b8;
+    }
+    .error {
+      color: #ff7b7b;
+      white-space: pre-wrap;
+    }
+  </style>
 </head>
-
 <body>
+  <h1>Polymarket Edge Stable</h1>
+  <p>Simple scanner for binary arbitrage candidates.</p>
 
-<h2>Polymarket Edge Stable</h2>
-<button onclick="runScan()">Scan Markets</button>
+  <button id="scanBtn">Scan Markets</button>
 
-<div class="card">
-<div class="small">Markets scanned</div>
-<div class="stat" id="markets">0</div>
-</div>
+  <div class="card">
+    <div class="label">Status</div>
+    <div id="status" class="row">Idle</div>
+  </div>
 
-<div class="card">
-<div class="small">Arbitrage hits</div>
-<div class="stat" id="arb">0</div>
-</div>
+  <div class="card">
+    <div class="label">Markets Scanned</div>
+    <div id="markets" class="stat">0</div>
+  </div>
 
-<div id="results"></div>
+  <div class="card">
+    <div class="label">Arbitrage Hits</div>
+    <div id="arb" class="stat">0</div>
+  </div>
 
-<script>
+  <div class="card">
+    <div class="label">Debug</div>
+    <div id="debug" class="row muted">No messages yet.</div>
+  </div>
 
-async function fetchMarkets(){
+  <div id="results"></div>
 
-const url="https://gamma-api.polymarket.com/markets?limit=200";
+  <script>
+    const statusEl = document.getElementById("status");
+    const marketsEl = document.getElementById("markets");
+    const arbEl = document.getElementById("arb");
+    const resultsEl = document.getElementById("results");
+    const debugEl = document.getElementById("debug");
+    const scanBtn = document.getElementById("scanBtn");
 
-const res=await fetch(url);
-const data=await res.json();
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+    }
 
-return data.filter(m=>
-m.clobTokenIds && m.clobTokenIds.length>=2
-);
+    function setDebug(msg, isError = false) {
+      debugEl.textContent = msg;
+      debugEl.className = "row " + (isError ? "error" : "muted");
+    }
 
-}
+    function safeParseTokenIds(value) {
+      if (Array.isArray(value)) return value;
 
-async function midpoint(token){
+      if (typeof value === "string") {
+        try {
+          const parsed = JSON.parse(value);
+          if (Array.isArray(parsed)) return parsed;
+        } catch (e) {
+          // not JSON array string
+        }
 
-try{
+        // fallback: comma-separated
+        if (value.includes(",")) {
+          return value.split(",").map(s => s.trim()).filter(Boolean);
+        }
 
-const res=await fetch(
-"https://clob.polymarket.com/midpoint?token_id="+token
-);
+        return [];
+      }
 
-const data=await res.json();
+      return [];
+    }
 
-return parseFloat(data.mid || data.mid_price);
+    async function fetchMarkets() {
+      const url = "https://gamma-api.polymarket.com/markets?limit=100";
+      const res = await fetch(url);
 
-}catch(e){
+      if (!res.ok) {
+        throw new Error("Markets request failed: " + res.status);
+      }
 
-return null;
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        throw new Error("Markets response was not an array");
+      }
 
-}
+      return data;
+    }
 
-}
+    async function fetchMidpoint(tokenId) {
+      const url = "https://clob.polymarket.com/midpoint?token_id=" + encodeURIComponent(tokenId);
+      const res = await fetch(url);
 
-async function runScan(){
+      if (!res.ok) return null;
 
-document.getElementById("results").innerHTML="";
-document.getElementById("markets").innerText="0";
-document.getElementById("arb").innerText="0";
+      const data = await res.json();
+      const raw = data.mid ?? data.mid_price;
 
-const markets=await fetchMarkets();
+      if (raw === undefined || raw === null) return null;
 
-let arbHits=0;
-let scanned=0;
+      const n = parseFloat(raw);
+      return Number.isFinite(n) ? n : null;
+    }
 
-for(const m of markets){
+    async function runScan() {
+      scanBtn.disabled = true;
+      resultsEl.innerHTML = "";
+      marketsEl.textContent = "0";
+      arbEl.textContent = "0";
+      setStatus("Loading markets...");
+      setDebug("Starting scan...");
 
-try{
+      let scanned = 0;
+      let arbHits = 0;
+      let skippedNoTokens = 0;
+      let skippedNoPrices = 0;
 
-const yes=m.clobTokenIds[0];
-const no=m.clobTokenIds[1];
+      try {
+        const markets = await fetchMarkets();
+        setStatus("Loaded " + markets.length + " markets. Scanning...");
 
-const yesPrice=await midpoint(yes);
-const noPrice=await midpoint(no);
+        for (const market of markets) {
+          const tokenIds = safeParseTokenIds(market.clobTokenIds);
 
-if(!yesPrice||!noPrice) continue;
+          if (tokenIds.length < 2) {
+            skippedNoTokens++;
+            continue;
+          }
 
-scanned++;
+          const yesToken = tokenIds[0];
+          const noToken = tokenIds[1];
 
-document.getElementById("markets").innerText=scanned;
+          if (!yesToken || !noToken) {
+            skippedNoTokens++;
+            continue;
+          }
 
-const total=yesPrice+noPrice;
+          const [yesPrice, noPrice] = await Promise.all([
+            fetchMidpoint(yesToken),
+            fetchMidpoint(noToken)
+          ]);
 
-if(total<1){
+          if (!Number.isFinite(yesPrice) || !Number.isFinite(noPrice)) {
+            skippedNoPrices++;
+            continue;
+          }
 
-arbHits++;
+          scanned++;
+          marketsEl.textContent = String(scanned);
 
-document.getElementById("arb").innerText=arbHits;
+          const total = yesPrice + noPrice;
+          const edge = 1 - total;
 
-const div=document.createElement("div");
-div.className="card";
+          if (total < 1) {
+            arbHits++;
+            arbEl.textContent = String(arbHits);
 
-div.innerHTML=
-"<b>"+m.question+"</b><br>"+
-"YES "+yesPrice.toFixed(2)+" / NO "+noPrice.toFixed(2)+"<br>"+
-"ARB EDGE: "+((1-total)*100).toFixed(2)+"%";
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+              <div><strong>${market.question || "Untitled market"}</strong></div>
+              <div class="row">YES: ${yesPrice.toFixed(3)} · NO: ${noPrice.toFixed(3)}</div>
+              <div class="row">Total: ${total.toFixed(3)} · Edge: ${(edge * 100).toFixed(2)}%</div>
+            `;
+            resultsEl.appendChild(card);
+          }
 
-document.getElementById("results").appendChild(div);
+          setStatus("Scanning... " + scanned + " valid markets checked");
+        }
 
-}
+        setStatus("Done");
+        setDebug(
+          "Finished.\n" +
+          "Valid markets scanned: " + scanned + "\n" +
+          "Skipped (bad tokens): " + skippedNoTokens + "\n" +
+          "Skipped (no midpoint): " + skippedNoPrices + "\n" +
+          "Arb hits: " + arbHits
+        );
+      } catch (err) {
+        setStatus("Failed");
+        setDebug("Scan failed:\n" + (err && err.message ? err.message : String(err)), true);
+      } finally {
+        scanBtn.disabled = false;
+      }
+    }
 
-}catch(e){
-continue;
-}
-
-}
-
-}
-
-</script>
-
+    scanBtn.addEventListener("click", runScan);
+  </script>
 </body>
 </html>
