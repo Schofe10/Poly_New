@@ -1,235 +1,164 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Polymarket Edge Finder Turbo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polymarket Orderbook Scanner</title>
 
 <style>
-body{
-font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-background:#07111f;
-color:#fff;
-margin:0;
-padding:22px;
-}
 
-h1{
-margin:0 0 24px;
-font-size:34px;
-font-weight:800;
+body{
+font-family:-apple-system;
+background:#07111f;
+color:white;
+padding:20px;
 }
 
 .card{
 background:#0d1b38;
-border-radius:20px;
 padding:20px;
-margin-bottom:20px;
-}
-
-.label{
-color:rgba(255,255,255,.75);
-font-size:13px;
-margin-bottom:10px;
-}
-
-.stat{
-font-size:30px;
-font-weight:800;
-color:#15f47a;
-}
-
-input{
-width:100%;
-padding:14px;
-border-radius:14px;
-border:none;
-font-size:16px;
-margin-bottom:14px;
+border-radius:16px;
+margin-bottom:16px;
 }
 
 button{
 background:#15d95e;
-color:white;
 border:none;
-border-radius:16px;
-padding:16px 24px;
-font-size:17px;
-font-weight:700;
-cursor:pointer;
+padding:14px;
+border-radius:12px;
+color:white;
+font-weight:bold;
+width:100%;
 }
 
-.full{width:100%;}
-
-.result-title{
-font-weight:800;
-font-size:17px;
-margin-bottom:8px;
-}
-
-.muted{
-color:rgba(255,255,255,.75);
-font-size:14px;
-}
-
-.edge{
-color:#15f47a;
-font-weight:700;
+input{
+width:100%;
+padding:12px;
+border-radius:12px;
+border:none;
+margin-bottom:12px;
 }
 
 .pill{
-display:inline-block;
-padding:8px 12px;
-border-radius:999px;
+padding:6px 10px;
+border-radius:20px;
 font-size:12px;
-font-weight:700;
-margin-top:10px;
 }
 
-.pill-strong{background:rgba(21,244,122,.18);color:#15f47a;}
-.pill-buy{background:rgba(100,200,255,.18);color:#78c9ff;}
-.pill-watch{background:rgba(255,211,77,.18);color:#ffd34d;}
-.pill-none{background:rgba(255,255,255,.12);color:rgba(255,255,255,.75);}
-
-.section-title{
-font-size:20px;
-font-weight:800;
-margin:28px 0 14px;
+.arb{
+background:#ff3b6b33;
+color:#ff7b97;
 }
+
 </style>
 </head>
 
 <body>
 
-<h1>Polymarket Turbo Scanner</h1>
+<h2>Polymarket Orderbook Scanner</h2>
 
 <div class="card">
-<div class="label">Proxy URL</div>
-<input id="proxy" placeholder="https://polymarket-proxy.yourname.workers.dev"/>
-<button onclick="saveProxy()">Save Proxy</button>
+
+<input id="proxy" placeholder="Worker URL">
+
+<button onclick="saveProxy()">Save Worker</button>
+
 </div>
 
-<button class="full" onclick="runScan()">Scan Markets</button>
+<button onclick="scan()">Scan Markets</button>
 
-<div class="card">
-<div class="label">Status</div>
-<div id="status">Idle</div>
-</div>
-
-<div class="card">
-<div class="label">Markets scanned</div>
-<div id="markets" class="stat">0</div>
-</div>
-
-<div class="card">
-<div class="label">Edge Opportunities</div>
-<div id="hits" class="stat">0</div>
-</div>
-
-<div class="section-title">Top Opportunities</div>
 <div id="results"></div>
 
 <script>
 
 function saveProxy(){
-const url=document.getElementById("proxy").value.trim().replace(/\/+$/,"")
-localStorage.setItem("proxy",url)
+
+localStorage.setItem(
+"proxy",
+document.getElementById("proxy").value
+)
+
 }
 
-function getProxy(){
-return(localStorage.getItem("proxy")||"").replace(/\/+$/,"")
-}
-
-function parseOutcomePrices(value){
-
-if(!value) return []
+function parsePrices(v){
 
 try{
-const parsed=JSON.parse(value)
-if(Array.isArray(parsed)){
-return parsed.map(x=>parseFloat(x)).filter(x=>Number.isFinite(x))
-}
-}catch{}
 
-return []
-}
+const p=JSON.parse(v)
 
-function heuristicFair(yes){
+return p.map(Number)
 
-let fair=yes
+}catch{
 
-if(yes<0.15) fair+=0.02
-if(yes>0.85) fair-=0.02
+return[]
 
-return Math.max(.01,Math.min(.99,fair))
 }
 
-async function runScan(){
-
-const proxy=getProxy()
-
-if(!proxy){
-alert("Set proxy first")
-return
 }
 
-const status=document.getElementById("status")
-const marketsEl=document.getElementById("markets")
-const hitsEl=document.getElementById("hits")
+async function scan(){
+
+const proxy=localStorage.getItem("proxy")
+
+const r=await fetch(proxy+"/api/markets")
+
+const markets=await r.json()
+
 const results=document.getElementById("results")
 
 results.innerHTML=""
-status.innerText="Loading markets..."
 
-let markets=[]
+for(const m of markets.slice(0,150)){
 
-try{
+const prices=parsePrices(m.outcomePrices)
 
-const r=await fetch(proxy+"/api/markets")
-markets=await r.json()
+if(prices.length<2)continue
 
-}catch(e){
-status.innerText="Failed loading markets"
-return
-}
+const yesToken=m.clobTokenIds
+?JSON.parse(m.clobTokenIds)[0]
+:null
 
-let scanned=0
-let hits=0
+const noToken=m.clobTokenIds
+?JSON.parse(m.clobTokenIds)[1]
+:null
 
-for(const m of markets){
+if(!yesToken||!noToken)continue
 
-const prices=parseOutcomePrices(m.outcomePrices)
+const yesBook=await fetch(proxy+"/api/orderbook/"+yesToken)
 
-if(prices.length<2) continue
+const noBook=await fetch(proxy+"/api/orderbook/"+noToken)
 
-const yes=prices[0]
-const no=prices[1]
+const yesData=await yesBook.json()
 
-if(!Number.isFinite(yes)||!Number.isFinite(no)) continue
+const noData=await noBook.json()
 
-scanned++
+const yesAsk=parseFloat(yesData.asks?.[0]?.price)
 
-const fair=heuristicFair(yes)
-const edge=fair-yes
+const noAsk=parseFloat(noData.asks?.[0]?.price)
 
-if(edge>0.02){
+if(!yesAsk||!noAsk)continue
 
-hits++
+const total=yesAsk+noAsk
+
+if(total<1){
+
+const edge=(1-total)*100
 
 const div=document.createElement("div")
+
 div.className="card"
 
-let signal="Watch"
-let pill="pill-watch"
-
-if(edge>0.1){signal="Strong Buy";pill="pill-strong"}
-else if(edge>0.05){signal="Buy";pill="pill-buy"}
-
 div.innerHTML=`
-<div class="result-title">${m.question}</div>
-<div class="muted">YES ${yes.toFixed(3)} Â· NO ${no.toFixed(3)}</div>
-<div class="muted">Edge <span class="edge">${(edge*100).toFixed(2)}%</span></div>
-<div class="pill ${pill}">${signal}</div>
+
+<b>${m.question}</b>
+
+<div>YES ask ${yesAsk}</div>
+
+<div>NO ask ${noAsk}</div>
+
+<div>Edge ${edge.toFixed(2)}%</div>
+
+<span class="pill arb">ARBITRAGE</span>
+
 `
 
 results.appendChild(div)
@@ -237,10 +166,6 @@ results.appendChild(div)
 }
 
 }
-
-marketsEl.innerText=scanned
-hitsEl.innerText=hits
-status.innerText="Done"
 
 }
 
